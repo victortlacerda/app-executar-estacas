@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EstacaControl</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;font-size:14px;color:#1a1a1a;background:#eef1f7;min-height:100vh}
+.app{max-width:980px;margin:0 auto;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:#042C53;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:15px;font-weight:600;color:#fff}
+.topbar-sub{font-size:11px;color:#85B7EB;font-family:'DM Mono',monospace;margin-top:2px}
+.nav{display:flex;gap:2px;background:#0C447C;padding:5px 12px;flex-wrap:wrap}
+.nav-btn{padding:6px 14px;font-size:12px;border:none;border-radius:5px;cursor:pointer;background:transparent;color:#85B7EB;font-family:'DM Sans',sans-serif;transition:all 0.12s}
+.nav-btn.active{background:#185FA5;color:#fff}
+.nav-btn:hover:not(.active){background:rgba(255,255,255,0.1);color:#fff}
+.content{padding:16px;flex:1}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid #e4eaf5;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.card-title{font-size:10px;font-weight:500;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.metric{background:#f4f6fa;border-radius:8px;padding:12px}
+.metric-label{font-size:11px;color:#888;margin-bottom:4px}
+.metric-value{font-size:22px;font-weight:600;font-family:'DM Mono',monospace}
+.progress-wrap{background:#e8edf5;border-radius:6px;height:9px;overflow:hidden;margin:5px 0}
+.progress-fill{height:100%;border-radius:6px;transition:width 0.4s}
+.progress-blue{background:#378ADD}.progress-green{background:#639922}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-header h2{font-size:16px;font-weight:600}
+.back-btn{display:flex;align-items:center;gap:5px;font-size:13px;color:#185FA5;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;padding:0;margin-bottom:12px}
+/* HIERARCHY */
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.torre-card{background:#fff;border:1px solid #e4eaf5;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.12s}
+.torre-card:hover{border-color:#378ADD;background:#f4f8ff;transform:translateY(-1px)}
+.torre-card-name{font-size:14px;font-weight:600;color:#042C53;margin-bottom:6px}
+.torre-card-sub{font-size:11px;color:#888;margin-bottom:10px}
+.bloco-card{background:#fff;border:1px solid #e4eaf5;border-radius:8px;padding:12px;cursor:pointer;transition:all 0.12s}
+.bloco-card:hover{border-color:#378ADD;background:#f4f8ff}
+.bloco-card-name{font-size:13px;font-weight:600;color:#185FA5;font-family:'DM Mono',monospace}
+.bloco-estacas{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.estaca-chip{font-size:10px;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-weight:500;cursor:pointer;transition:all 0.1s}
+.estaca-chip:hover{opacity:0.8}
+.s-executada{background:#EAF3DE;color:#27500A}.s-pendente{background:#e6f1fb;color:#0C447C}.s-alerta{background:#FAEEDA;color:#633806}
+/* ESTACA LIST */
+.estaca-list{display:flex;flex-direction:column;gap:5px}
+.estaca-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e4eaf5;border-radius:8px;cursor:pointer;background:#fff;transition:background 0.1s;flex-wrap:wrap}
+.estaca-row:hover{background:#f4f8ff}
+.estaca-id{font-weight:600;font-size:13px;min-width:64px;font-family:'DM Mono',monospace}
+.tipo-pill{font-size:10px;padding:2px 7px;border-radius:4px;background:#e6f1fb;color:#0C447C;font-family:'DM Mono',monospace;white-space:nowrap}
+.status-badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap}
+/* FORM */
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;color:#666;margin-bottom:4px;display:block;font-weight:500}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+input,select,textarea{width:100%;font-size:13px;font-family:'DM Sans',sans-serif;padding:7px 10px;border:1px solid #d0d8e8;border-radius:7px;background:#fff;color:#1a1a1a;transition:border 0.1s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,0.08)}
+input[readonly]{background:#f4f6fa;color:#555;cursor:default}
+textarea{resize:vertical;min-height:60px}
+.btn{padding:8px 16px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid #d0d8e8;border-radius:7px;cursor:pointer;background:#fff;color:#1a1a1a;transition:all 0.1s}
+.btn:hover{background:#f4f6fa}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn-primary:hover{background:#0C447C}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tipo-card{padding:10px;border:1px solid #e4eaf5;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.12s;background:#fff}
+.tipo-card:hover{border-color:#378ADD;background:#f4f8ff}
+.tipo-card.selected{border-color:#185FA5;background:#e6f1fb}
+.tipo-card-name{font-size:11px;font-weight:500;color:#333;margin-top:4px}
+/* COMPARATIVO */
+.comp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f3f9;flex-wrap:wrap}
+.comp-label{font-size:12px;color:#888;min-width:160px}
+.comp-proj{font-size:12px;color:#aaa;min-width:80px;font-family:'DM Mono',monospace}
+.comp-exec{font-size:13px;font-weight:500;min-width:80px;font-family:'DM Mono',monospace}
+.comp-diff{font-size:11px;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace}
+.d-ok{background:#EAF3DE;color:#27500A}.d-warn{background:#FAEEDA;color:#633806}.d-bad{background:#FCEBEB;color:#791F1F}
+/* HIER TAG */
+.hier-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:4px}
+.hier-torre{background:#e6f1fb;color:#0C447C}.hier-bloco{background:#EAF3DE;color:#27500A}
+/* TORQUE MODULE */
+.tp-module{background:#fff;border:1px solid #e4eaf5;border-radius:10px;overflow:hidden;margin-bottom:12px}
+.tp-header{background:#042C53;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.tp-header-title{font-size:13px;font-weight:600;color:#fff}
+.tp-header-sub{font-size:10px;color:#85B7EB;font-family:'DM Mono',monospace;margin-top:2px}
+.tp-badges{display:flex;gap:5px}
+.tp-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-weight:500}
+.tp-badge-t{background:rgba(55,138,221,0.25);color:#85B7EB;border:0.5px solid rgba(133,183,235,0.3)}
+.tp-badge-p{background:rgba(212,83,126,0.2);color:#F4C0D1;border:0.5px solid rgba(244,192,209,0.3)}
+.tp-body{padding:12px}
+.tp-mode-row{display:flex;gap:5px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.tp-mode-label{font-size:11px;color:#888;margin-right:2px}
+.tp-mode-btn{padding:4px 10px;font-size:11px;font-family:'DM Mono',monospace;border-radius:5px;border:1px solid #d0d8e8;cursor:pointer;background:#fff;color:#555;transition:all 0.1s}
+.tp-mode-btn.active{background:#185FA5;color:#fff;border-color:#185FA5}
+.tp-two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.55fr);gap:12px;align-items:start}
+.tp-table-panel{border:1px solid #e4eaf5;border-radius:8px;overflow:hidden}
+.tp-table-head{display:grid;grid-template-columns:64px 1fr 1fr 28px;padding:7px 10px;background:#f4f6fa;font-size:10px;color:#888;font-family:'DM Mono',monospace;border-bottom:1px solid #e4eaf5}
+.tp-table-rows{max-height:240px;overflow-y:auto}
+.tp-data-row{display:grid;grid-template-columns:64px 1fr 1fr 28px;border-bottom:1px solid #f0f3f9;align-items:center}
+.tp-data-row:hover{background:#f8fafd}
+.tp-dr-depth{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;padding:6px 10px;color:#185FA5}
+.tp-dr-val{font-family:'DM Mono',monospace;font-size:12px;padding:6px 5px;color:#333}
+.tp-dr-del{padding:3px 7px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;transition:color 0.1s}
+.tp-dr-del:hover{color:#A32D2D}
+.tp-add-row{display:grid;grid-template-columns:64px 1fr 1fr 28px;padding:5px 7px;background:#f8fafd;border-top:1px solid #e4eaf5;gap:4px;align-items:center}
+.tp-add-input{font-family:'DM Mono',monospace;font-size:11px;padding:5px 6px;border:1px solid #d0d8e8;border-radius:5px;background:#fff;color:#1a1a1a;width:100%}
+.tp-add-input:focus{outline:none;border-color:#378ADD}
+.tp-add-btn{width:24px;height:24px;border-radius:5px;border:1px solid #d0d8e8;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:#185FA5;transition:all 0.1s}
+.tp-add-btn:hover{background:#185FA5;color:#fff;border-color:#185FA5}
+.tp-actions{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.tp-bulk{flex:1;min-width:120px;font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px;border:1px solid #d0d8e8;border-radius:5px;background:#fff;color:#1a1a1a}
+.tp-bulk:focus{outline:none;border-color:#378ADD}
+.tp-btn-sm{padding:4px 9px;font-size:11px;font-family:'DM Mono',monospace;border:1px solid #d0d8e8;border-radius:5px;cursor:pointer;background:#fff;color:#333;transition:all 0.1s}
+.tp-btn-sm:hover{background:#f4f6fa}
+.tp-btn-p{background:#185FA5;color:#fff;border-color:#185FA5}
+.tp-btn-p:hover{background:#0C447C}
+.tp-chart-panel{background:#fff;border:1px solid #e4eaf5;border-radius:8px;padding:12px}
+.tp-chart-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tp-chart-title{font-size:12px;font-weight:600;color:#1a1a1a}
+.tp-legend{display:flex;gap:10px}
+.tp-leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#666}
+.tp-leg-dot{width:9px;height:9px;border-radius:2px}
+.tp-chart-wrap{position:relative;height:240px}
+.tp-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+.tp-stat{background:#f4f6fa;border-radius:6px;padding:8px 9px}
+.tp-stat-label{font-size:10px;color:#888;margin-bottom:3px;font-family:'DM Mono',monospace}
+.tp-stat-val{font-size:15px;font-weight:600;font-family:'DM Mono',monospace}
+.tp-empty{padding:14px;text-align:center;font-size:12px;color:#aaa}
+.alert-box{padding:10px 12px;border-radius:7px;font-size:12px;display:none;gap:8px;align-items:flex-start;line-height:1.5;margin-top:8px}
+.alert-box.show{display:flex}
+.alert-warn{background:#FAEEDA;color:#854F0B;border:1px solid rgba(186,117,23,0.2)}
+.alert-bad{background:#FCEBEB;color:#A32D2D;border:1px solid rgba(163,45,45,0.2)}
+/* ═══ CATALOG MODULE ═══ */
+.cat-module{background:#fff;border:1px solid #e4eaf5;border-radius:10px;overflow:hidden;margin-bottom:12px}
+.cat-header{background:#185FA5;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.cat-header-title{font-size:13px;font-weight:600;color:#fff}
+.cat-header-count{font-size:10px;color:rgba(255,255,255,0.65);font-family:'DM Mono',monospace;margin-left:auto}
+.cat-body{padding:12px}
+.cat-search{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.cat-search-input{flex:1;font-size:12px;font-family:'DM Mono',monospace;padding:7px 10px;border:1px solid #d0d8e8;border-radius:7px;background:#fff;color:#1a1a1a}
+.cat-search-input:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,0.08)}
+.cat-list{max-height:220px;overflow-y:auto;border:1px solid #e4eaf5;border-radius:8px;margin-bottom:10px}
+.cat-row{display:flex;align-items:stretch;cursor:pointer;border-bottom:1px solid #f0f3f9;transition:background 0.08s}
+.cat-row:last-child{border-bottom:none}
+.cat-row:hover{background:#f4f8ff}
+.cat-row.selected{background:#e6f1fb;border-left:3px solid #185FA5}
+.cat-radio{display:flex;align-items:center;padding:0 10px;color:#185FA5;font-size:14px;flex-shrink:0}
+.cat-name{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:9px 8px 9px 0;min-width:180px;color:#042C53;line-height:1.4}
+.cat-specs{display:flex;gap:0;flex:1;overflow:hidden}
+.cat-spec{font-size:10px;padding:9px 8px;color:#888;font-family:'DM Mono',monospace;border-left:1px solid #f0f3f9;min-width:72px;white-space:nowrap}
+.cat-spec strong{color:#333;display:block;font-size:11px}
+.cat-empty{padding:20px;text-align:center;font-size:12px;color:#aaa}
+/* selected profile card */
+.sel-card{background:#f4f8ff;border:1px solid #b5d4f4;border-radius:8px;padding:12px;margin-bottom:10px}
+.sel-card-label{font-size:10px;color:#185FA5;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.sel-card-name{font-size:14px;font-weight:600;color:#042C53;font-family:'DM Mono',monospace;margin-bottom:8px}
+.props-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.prop-item{background:#fff;border:1px solid #e4eaf5;border-radius:6px;padding:7px 9px}
+.prop-label{font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:2px}
+.prop-value{font-size:13px;font-weight:600;font-family:'DM Mono',monospace}
+.prop-unit{font-size:9px;color:#aaa;font-weight:400}
+.carga-row{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.carga-badge{font-size:11px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:5px;font-weight:500}
+.carga-166{background:#EAF3DE;color:#27500A}.carga-200{background:#e6f1fb;color:#0C447C}
+.no-sel-msg{font-size:12px;color:#aaa;padding:8px 0}
+.change-btn{font-size:11px;color:#185FA5;cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;padding:0;margin-left:auto;text-decoration:underline}
+.change-btn:hover{color:#042C53}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:#042C53;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;font-family:'DM Mono',monospace}
+.toast.show{opacity:1}
+@media(max-width:640px){.metrics{grid-template-columns:1fr 1fr}.tp-two-col{grid-template-columns:1fr}.tp-stats{grid-template-columns:1fr 1fr}.grid-cards{grid-template-columns:1fr 1fr}.cat-specs{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;min-width:0">
+    <div class="topbar-title">◆ EstacaControl</div>
+    <div id="obra-switcher" onclick="toggleObraPanel()" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 10px;cursor:pointer">
+      <div id="obra-dot" style="width:7px;height:7px;border-radius:50%;background:#5DCAA5;flex-shrink:0"></div>
+      <span id="obra-nome" style="font-size:12px;font-weight:500;color:#fff;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">—</span>
+      <span style="font-size:10px;color:#85B7EB">▾</span>
+    </div>
+  </div>
+  <div style="font-size:11px;background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:4px;color:#85B7EB;font-family:'DM Mono',monospace">Eng. J. Mendes</div>
+</div>
+<!-- OBRA PANEL OVERLAY -->
+<div id="obra-overlay" style="display:none;position:fixed;inset:0;background:rgba(4,44,83,0.45);z-index:200;align-items:flex-start;justify-content:center;padding-top:56px" onclick="if(event.target===this)closeObraPanel()">
+  <div style="background:#fff;border-radius:12px;width:100%;max-width:540px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.18)" onclick="event.stopPropagation()">
+    <div style="padding:16px 18px 12px;border-bottom:1px solid #e4eaf5;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:600">Selecionar obra</div>
+      <button onclick="closeObraPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#aaa;padding:0 4px">×</button>
+    </div>
+    <div id="obra-panel-body" style="flex:1;overflow-y:auto;padding:12px"></div>
+  </div>
+</div>
+<div class="nav">
+  <button class="nav-btn active" onclick="go('dashboard')">Dashboard</button>
+  <button class="nav-btn" onclick="go('estrutura')">Torres / Blocos</button>
+  <button class="nav-btn" onclick="go('estacas')">Estacas</button>
+  <button class="nav-btn" onclick="go('registrar')">Registrar</button>
+  <button class="nav-btn" onclick="go('comparativo')">Comparativo</button>
+</div>
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="sec-dashboard" class="section active">
+  <div class="section-header">
+    <h2>Dashboard</h2>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="dash-obra-tag" style="font-size:11px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:4px;background:#f0e6fb;color:#533489"></span>
+      <span style="font-size:11px;color:#888;font-family:'DM Mono',monospace">Atualizado agora</span>
+    </div>
+  </div>
+  <div id="dash-todas-obras" style="margin-bottom:12px"></div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Total de estacas</div><div class="metric-value" style="color:#185FA5" id="m-total">—</div></div>
+    <div class="metric"><div class="metric-label">Executadas</div><div class="metric-value" style="color:#3B6D11" id="m-exec">—</div></div>
+    <div class="metric"><div class="metric-label">Pendentes</div><div class="metric-value" style="color:#854F0B" id="m-pend">—</div></div>
+    <div class="metric"><div class="metric-label">Com alerta</div><div class="metric-value" style="color:#A32D2D" id="m-alert">—</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Progresso de execução</div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px"><span>Estacas executadas</span><span id="prog-pct">0%</span></div>
+    <div class="progress-wrap"><div class="progress-fill progress-blue" id="prog-bar" style="width:0%"></div></div>
+    <div style="font-size:11px;color:#aaa;margin-top:6px;font-family:'DM Mono',monospace">Previsão de término: 28/06/2025</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card"><div class="card-title">Progresso por torre</div><div id="torre-progress"></div></div>
+    <div class="card"><div class="card-title">Últimas execuções</div><div id="last-exec"></div></div>
+  </div>
+</div>
+
+<!-- ESTRUTURA -->
+<div id="sec-estrutura" class="section">
+  <div id="view-torres">
+    <div class="section-header"><h2>Torres</h2></div>
+    <div class="grid-cards" id="torres-grid"></div>
+  </div>
+  <div id="view-blocos" style="display:none">
+    <button class="back-btn" onclick="showTorres()">← Voltar</button>
+    <div class="section-header"><h2 id="blocos-title">Blocos</h2><span class="hier-tag hier-torre" id="blocos-torre-tag"></span></div>
+    <div style="margin-bottom:12px;font-size:12px;color:#888">Clique numa estaca para registrar ou ver o comparativo.</div>
+    <div class="grid-cards" id="blocos-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"></div>
+  </div>
+</div>
+
+<!-- ESTACAS -->
+<div id="sec-estacas" class="section">
+  <div class="section-header"><h2>Lista de estacas</h2><button class="btn btn-primary btn-sm" onclick="go('registrar')">+ Registrar</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <input type="text" placeholder="Buscar..." id="search-e" oninput="renderEstacasList()" style="flex:1;min-width:140px">
+    <select id="filt-torre" onchange="renderEstacasList()" style="width:auto"><option value="">Todas as torres</option></select>
+    <select id="filt-st" onchange="renderEstacasList()" style="width:auto"><option value="">Todos status</option><option value="executada">Executada</option><option value="pendente">Pendente</option><option value="alerta">Alerta</option></select>
+    <select id="filt-tp" onchange="renderEstacasList()" style="width:auto"><option value="">Todos tipos</option></select>
+  </div>
+  <div class="estaca-list" id="estaca-list"></div>
+</div>
+
+<!-- REGISTRAR -->
+<div id="sec-registrar" class="section">
+  <button class="back-btn" onclick="go('estacas')">← Voltar</button>
+  <div class="section-header"><h2>Registrar execução</h2></div>
+  <div class="card">
+    <div class="card-title">1. Localização da estaca</div>
+    <div class="form-row3">
+      <div class="form-group"><label class="form-label">Torre</label><select id="reg-torre" onchange="onTorreSel()"><option value="">— selecione —</option></select></div>
+      <div class="form-group"><label class="form-label">Bloco</label><select id="reg-bloco" onchange="onBlocoSel()"><option value="">— selecione —</option></select></div>
+      <div class="form-group"><label class="form-label">Estaca</label><select id="reg-estaca" onchange="onEstacaSel()"><option value="">— selecione —</option></select></div>
+    </div>
+    <div id="reg-info" style="display:none;padding:8px 12px;background:#f4f6fa;border-radius:7px;font-size:12px;color:#555;font-family:'DM Mono',monospace"></div>
+    <div style="margin-top:12px" class="card-title">2. Tipo de estaca</div>
+    <div class="tipo-grid" id="tipo-grid"></div>
+  </div>
+  <div id="form-body" style="display:none">
+    <div class="card">
+      <div class="card-title">3. Identificação</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Data de execução</label><input type="date" id="f-data"></div>
+        <div class="form-group"><label class="form-label">Hora de início</label><input type="time" id="f-hora"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Executor / Operador</label><input type="text" id="f-executor" placeholder="Nome do operador"></div>
+        <div class="form-group"><label class="form-label">Máquina utilizada</label><select id="f-maquina"><option>SB-200 (Rotação)</option><option>MC-60 (Hélice)</option><option>Bate-estacas KH125</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Cota de execução — topo (m)</label><input type="number" id="f-cota" step="0.01" placeholder="ex: −1.50"></div>
+    </div>
+    <div id="form-especifico"></div>
+    <!-- TORQUE MODULE (helice only) -->
+    <div id="tp-module-wrap" style="display:none">
+      <div class="tp-module">
+        <div class="tp-header"><div><div class="tp-header-title">Monitoramento de torque / pressão</div><div class="tp-header-sub" id="tp-estaca-sub"></div></div><div class="tp-badges"><span class="tp-badge tp-badge-t">kN.m</span><span class="tp-badge tp-badge-p">bar</span></div></div>
+        <div class="tp-body">
+          <div class="tp-mode-row"><span class="tp-mode-label">Leitura:</span><button class="tp-mode-btn active" id="tp-btn-torque" onclick="tpSetMode('torque')">Torque (kN.m)</button><button class="tp-mode-btn" id="tp-btn-pressao" onclick="tpSetMode('pressao')">Pressão (bar)</button><button class="tp-mode-btn" id="tp-btn-ambos" onclick="tpSetMode('ambos')">Ambos</button></div>
+          <div class="tp-two-col">
+            <div>
+              <div class="tp-table-panel">
+                <div class="tp-table-head"><div>Prof. (m)</div><div id="tp-th1">Torque</div><div id="tp-th2"></div><div></div></div>
+                <div class="tp-table-rows" id="tp-rows"><div class="tp-empty">Nenhuma leitura</div></div>
+                <div class="tp-add-row"><input class="tp-add-input" id="tp-in-prof" type="number" step="0.5" min="0" placeholder="prof."><input class="tp-add-input" id="tp-in-v1" type="number" step="0.1" placeholder="valor"><input class="tp-add-input" id="tp-in-v2" type="number" step="0.1" placeholder="pressão" style="display:none"><button class="tp-add-btn" onclick="tpAdd()">+</button></div>
+              </div>
+              <div class="tp-actions"><input class="tp-bulk" id="tp-bulk" placeholder="prof,val | prof,val ..."><button class="tp-btn-sm tp-btn-p" onclick="tpImport()">Importar ↵</button><button class="tp-btn-sm" onclick="tpClear()">Limpar</button></div>
+              <div class="alert-box" id="tp-alert"></div>
+            </div>
+            <div class="tp-chart-panel"><div class="tp-chart-title-row"><div class="tp-chart-title">Perfil por profundidade</div><div class="tp-legend" id="tp-legend"></div></div><div class="tp-chart-wrap"><canvas id="tp-chart"></canvas></div><div class="tp-stats" id="tp-stats"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Observações</div><textarea id="f-obs" placeholder="Intercorrências, problemas ou informações adicionais..."></textarea></div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="salvar()">Salvar execução</button><button class="btn" onclick="go('estacas')">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- COMPARATIVO -->
+<div id="sec-comparativo" class="section">
+  <div class="section-header"><h2>Comparativo: projetado × executado</h2></div>
+  <div class="form-row" style="margin-bottom:14px">
+    <div class="form-group"><label class="form-label">Torre</label><select id="comp-torre" onchange="onCompTorreSel()"><option value="">— torre —</option></select></div>
+    <div class="form-group"><label class="form-label">Estaca</label><select id="comp-estaca" onchange="renderComp()"><option value="">— estaca —</option></select></div>
+  </div>
+  <div id="comp-content"></div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /app -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   CATALOG DATABASES
+═══════════════════════════════════════ */
+const METALICOS=[{"bitola":"W 150 x 13,0","massa":13,"d":148,"bf":100,"tw":4.3,"tf":4.9,"area":16.6,"carga166":14,"carga200":11.2},{"bitola":"W 150 x 18,0","massa":18,"d":153,"bf":102,"tw":5.8,"tf":7.1,"area":23.4,"carga166":28,"carga200":22.4},{"bitola":"W 150 x 22,5 (H)","massa":22.5,"d":152,"bf":152,"tw":5.8,"tf":6.6,"area":29,"carga166":33,"carga200":26.4},{"bitola":"W 150 x 24,0","massa":24,"d":160,"bf":102,"tw":6.6,"tf":10.3,"area":31.5,"carga166":44,"carga200":35.2},{"bitola":"W 150 x 29,8 (H)","massa":29.8,"d":157,"bf":153,"tw":6.6,"tf":9.3,"area":38.5,"carga166":53,"carga200":42.4},{"bitola":"W 150 x 37,1 (H)","massa":37.1,"d":162,"bf":154,"tw":8.1,"tf":11.6,"area":47.8,"carga166":72,"carga200":57.6},{"bitola":"W 200 x 15,0","massa":15,"d":200,"bf":100,"tw":4.3,"tf":5.2,"area":19.4,"carga166":16,"carga200":12.8},{"bitola":"W 200 x 19,3","massa":19.3,"d":203,"bf":102,"tw":5.8,"tf":6.5,"area":25.1,"carga166":28,"carga200":22.4},{"bitola":"W 200 x 22,5","massa":22.5,"d":206,"bf":102,"tw":6.2,"tf":8,"area":29,"carga166":36,"carga200":28.8},{"bitola":"W 200 x 26,6","massa":26.6,"d":207,"bf":133,"tw":5.8,"tf":8.4,"area":34.2,"carga166":43,"carga200":34.4},{"bitola":"W 200 x 31,3","massa":31.3,"d":210,"bf":134,"tw":6.4,"tf":10.2,"area":40.3,"carga166":56,"carga200":44.8},{"bitola":"W 200 x 35,9 (H)","massa":35.9,"d":201,"bf":165,"tw":6.2,"tf":10.2,"area":45.7,"carga166":64,"carga200":51.2},{"bitola":"W 200 x 41,7 (H)","massa":41.7,"d":205,"bf":166,"tw":7.2,"tf":11.8,"area":53.5,"carga166":80,"carga200":64},{"bitola":"W 200 x 46,1 (H)","massa":46.1,"d":203,"bf":203,"tw":7.2,"tf":11,"area":58.6,"carga166":86,"carga200":68.8},{"bitola":"W 200 x 52,0 (H)","massa":52,"d":206,"bf":204,"tw":7.9,"tf":12.6,"area":66.9,"carga166":104,"carga200":83.2},{"bitola":"W 200 x 59,0 (H)","massa":59,"d":210,"bf":205,"tw":9.1,"tf":14.2,"area":76,"carga166":122,"carga200":97.6},{"bitola":"W 200 x 71,0 (H)","massa":71,"d":216,"bf":206,"tw":10.2,"tf":17.4,"area":91,"carga166":154,"carga200":123.2},{"bitola":"W 200 x 86,0 (H)","massa":86,"d":222,"bf":209,"tw":13,"tf":20.6,"area":110.9,"carga166":195,"carga200":156},{"bitola":"W 250 x 17,9","massa":17.9,"d":251,"bf":101,"tw":4.8,"tf":5.3,"area":23.1,"carga166":19,"carga200":15.2},{"bitola":"W 250 x 22,3","massa":22.3,"d":254,"bf":102,"tw":5.8,"tf":6.9,"area":28.9,"carga166":31,"carga200":24.8},{"bitola":"W 250 x 25,3","massa":25.3,"d":257,"bf":102,"tw":6.1,"tf":8.4,"area":32.6,"carga166":40,"carga200":32},{"bitola":"W 250 x 28,4","massa":28.4,"d":260,"bf":102,"tw":6.4,"tf":10,"area":36.6,"carga166":49,"carga200":39.2},{"bitola":"W 250 x 32,7","massa":32.7,"d":258,"bf":146,"tw":6.1,"tf":9.1,"area":42.1,"carga166":54,"carga200":43.2},{"bitola":"W 250 x 38,5","massa":38.5,"d":262,"bf":147,"tw":6.6,"tf":11.2,"area":49.6,"carga166":70,"carga200":56},{"bitola":"W 250 x 44,8","massa":44.8,"d":266,"bf":148,"tw":7.6,"tf":13,"area":57.6,"carga166":87,"carga200":69.6},{"bitola":"W 250 x 73,0 (H)","massa":73,"d":253,"bf":254,"tw":8.6,"tf":14.2,"area":92.7,"carga166":149,"carga200":119.2},{"bitola":"W 250 x 80,0 (H)","massa":80,"d":256,"bf":255,"tw":9.4,"tf":15.6,"area":101.9,"carga166":168,"carga200":134.4},{"bitola":"W 250 x 89,0 (H)","massa":89,"d":260,"bf":256,"tw":10.7,"tf":17.3,"area":113.9,"carga166":193,"carga200":154.4},{"bitola":"W 250 x 101,0 (H)","massa":101,"d":264,"bf":257,"tw":11.9,"tf":19.6,"area":128.7,"carga166":224,"carga200":179.2},{"bitola":"W 250 x 115,0 (H)","massa":115,"d":269,"bf":259,"tw":13.5,"tf":22.1,"area":146.1,"carga166":260,"carga200":208},{"bitola":"W 310 x 21,0","massa":21,"d":303,"bf":101,"tw":5.1,"tf":5.7,"area":27.2,"carga166":22,"carga200":17.6},{"bitola":"W 310 x 23,8","massa":23.8,"d":305,"bf":101,"tw":5.6,"tf":6.7,"area":30.7,"carga166":29,"carga200":23.2},{"bitola":"W 310 x 28,3","massa":28.3,"d":309,"bf":102,"tw":6,"tf":8.9,"area":36.5,"carga166":41,"carga200":32.8},{"bitola":"W 310 x 32,7","massa":32.7,"d":313,"bf":102,"tw":6.6,"tf":10.8,"area":42.1,"carga166":54,"carga200":43.2},{"bitola":"W 310 x 38,7","massa":38.7,"d":310,"bf":165,"tw":5.8,"tf":9.7,"area":49.7,"carga166":61,"carga200":48.8},{"bitola":"W 310 x 44,5","massa":44.5,"d":313,"bf":166,"tw":6.6,"tf":11.2,"area":57.2,"carga166":77,"carga200":61.6},{"bitola":"W 310 x 52,0","massa":52,"d":317,"bf":167,"tw":7.6,"tf":13.2,"area":67,"carga166":101,"carga200":80.8},{"bitola":"W 310 x 97,0 (H)","massa":97,"d":308,"bf":305,"tw":9.9,"tf":15.4,"area":123.6,"carga166":204,"carga200":163.2},{"bitola":"W 310 x 107,0 (H)","massa":107,"d":311,"bf":306,"tw":10.9,"tf":17,"area":136.4,"carga166":231,"carga200":184.8},{"bitola":"W 310 x 117,0 (H)","massa":117,"d":314,"bf":307,"tw":11.9,"tf":18.7,"area":149.9,"carga166":259,"carga200":207.2},{"bitola":"W 360 x 32,9","massa":32.9,"d":349,"bf":127,"tw":5.8,"tf":8.5,"area":42.1,"carga166":45,"carga200":36},{"bitola":"W 360 x 39,0","massa":39,"d":353,"bf":128,"tw":6.5,"tf":10.7,"area":50.2,"carga166":62,"carga200":49.6},{"bitola":"W 360 x 44,0","massa":44,"d":352,"bf":171,"tw":6.9,"tf":9.8,"area":57.7,"carga166":73,"carga200":58.4},{"bitola":"W 360 x 51,0","massa":51,"d":355,"bf":171,"tw":7.2,"tf":11.6,"area":64.8,"carga166":88,"carga200":70.4},{"bitola":"W 360 x 57,8","massa":57.8,"d":358,"bf":172,"tw":7.9,"tf":13.1,"area":72.5,"carga166":106,"carga200":84.8},{"bitola":"W 360 x 64,0","massa":64,"d":347,"bf":203,"tw":7.7,"tf":13.5,"area":81.7,"carga166":123,"carga200":98.4},{"bitola":"W 360 x 72,0","massa":72,"d":350,"bf":204,"tw":8.6,"tf":15.1,"area":91.3,"carga166":146,"carga200":116.8},{"bitola":"W 360 x 79,0","massa":79,"d":354,"bf":205,"tw":9.4,"tf":16.8,"area":101.2,"carga166":167,"carga200":133.6},{"bitola":"W 360 x 91,0 (H)","massa":91,"d":353,"bf":254,"tw":9.5,"tf":16.4,"area":115.9,"carga166":192,"carga200":153.6},{"bitola":"W 360 x 101,0 (H)","massa":101,"d":357,"bf":255,"tw":10.5,"tf":18.3,"area":129.5,"carga166":220,"carga200":176},{"bitola":"W 360 x 110,0 (H)","massa":110,"d":360,"bf":256,"tw":11.4,"tf":19.9,"area":140.6,"carga166":243,"carga200":194.4},{"bitola":"W 360 x 122,0 (H)","massa":122,"d":363,"bf":257,"tw":13,"tf":21.7,"area":155.3,"carga166":274,"carga200":219.2},{"bitola":"W 410 x 38,8","massa":38.8,"d":399,"bf":140,"tw":6.4,"tf":8.8,"area":50.3,"carga166":54,"carga200":43.2},{"bitola":"W 410 x 46,1","massa":46.1,"d":403,"bf":140,"tw":7,"tf":11.2,"area":59.2,"carga166":73,"carga200":58.4},{"bitola":"W 410 x 53,0","massa":53,"d":403,"bf":177,"tw":7.5,"tf":10.9,"area":68.4,"carga166":88,"carga200":70.4},{"bitola":"W 410 x 60,0","massa":60,"d":407,"bf":178,"tw":7.7,"tf":12.8,"area":76.2,"carga166":104,"carga200":83.2},{"bitola":"W 410 x 67,0","massa":67,"d":410,"bf":179,"tw":8.8,"tf":14.4,"area":86.3,"carga166":128,"carga200":102.4},{"bitola":"W 410 x 75,0","massa":75,"d":413,"bf":180,"tw":9.7,"tf":16,"area":95.8,"carga166":150,"carga200":120},{"bitola":"W 410 x 85,0","massa":85,"d":417,"bf":181,"tw":10.9,"tf":18.2,"area":108.6,"carga166":181,"carga200":144.8},{"bitola":"W 460 x 52,0","massa":52,"d":450,"bf":152,"tw":7.6,"tf":10.8,"area":66.6,"carga166":81,"carga200":64.8},{"bitola":"W 460 x 60,0","massa":60,"d":455,"bf":153,"tw":8,"tf":13.3,"area":76.2,"carga166":100,"carga200":80},{"bitola":"W 460 x 68,0","massa":68,"d":459,"bf":154,"tw":9.1,"tf":15.4,"area":87.6,"carga166":126,"carga200":100.8},{"bitola":"W 460 x 74,0","massa":74,"d":457,"bf":190,"tw":9,"tf":14.5,"area":94.9,"carga166":137,"carga200":109.6},{"bitola":"W 460 x 82,0","massa":82,"d":460,"bf":191,"tw":9.9,"tf":16,"area":104.7,"carga166":160,"carga200":128},{"bitola":"W 460 x 89,0","massa":89,"d":463,"bf":192,"tw":10.5,"tf":17.7,"area":114.1,"carga166":181,"carga200":144.8},{"bitola":"W 460 x 97,0","massa":97,"d":466,"bf":193,"tw":11.4,"tf":19,"area":123.4,"carga166":208,"carga200":166.4},{"bitola":"W 460 x 106,0","massa":106,"d":469,"bf":194,"tw":12.6,"tf":20.6,"area":135.1,"carga166":232,"carga200":185.6},{"bitola":"W 530 x 66,0","massa":66,"d":525,"bf":165,"tw":8.9,"tf":11.4,"area":83.6,"carga166":104,"carga200":83.2},{"bitola":"W 530 x 72,0","massa":72,"d":524,"bf":207,"tw":9,"tf":10.9,"area":91.6,"carga166":116,"carga200":92.8},{"bitola":"W 530 x 74,0","massa":74,"d":529,"bf":166,"tw":9.7,"tf":13.6,"area":95.1,"carga166":129,"carga200":103.2},{"bitola":"W 530 x 82,0","massa":82,"d":528,"bf":209,"tw":9.5,"tf":13.3,"area":104.5,"carga166":143,"carga200":114.4},{"bitola":"W 530 x 85,0","massa":85,"d":535,"bf":166,"tw":10.3,"tf":16.5,"area":107.7,"carga166":156,"carga200":124.8},{"bitola":"W 530 x 92,0","massa":92,"d":533,"bf":209,"tw":10.2,"tf":15.6,"area":117.6,"carga166":171,"carga200":136.8},{"bitola":"W 530 x 101,0","massa":101,"d":537,"bf":210,"tw":10.9,"tf":17.4,"area":130,"carga166":200,"carga200":160},{"bitola":"W 530 x 109,0","massa":109,"d":539,"bf":211,"tw":11.6,"tf":18.8,"area":139.7,"carga166":223,"carga200":178.4},{"bitola":"W 610 x 101,0","massa":101,"d":603,"bf":228,"tw":10.5,"tf":14.9,"area":130.3,"carga166":183,"carga200":146.4},{"bitola":"W 610 x 113,0","massa":113,"d":608,"bf":228,"tw":11.2,"tf":17.3,"area":145.3,"carga166":216,"carga200":172.8},{"bitola":"W 610 x 125,0","massa":125,"d":612,"bf":229,"tw":11.9,"tf":19.6,"area":160.1,"carga166":249,"carga200":199.2},{"bitola":"W 610 x 140,0","massa":140,"d":617,"bf":230,"tw":13.1,"tf":22.2,"area":179.3,"carga166":294,"carga200":235.2},{"bitola":"W 610 x 155,0","massa":155,"d":611,"bf":324,"tw":12.7,"tf":19,"area":198.1,"carga166":320,"carga200":256},{"bitola":"W 610 x 174,0","massa":174,"d":616,"bf":325,"tw":14,"tf":21.6,"area":222.8,"carga166":378,"carga200":302.4}];
+const PREMOLDADAS=[{"nome":"PREFAZ PROTENDIDA QUADRADA PLENA 17","dext":17,"dint":null,"area":289,"perim":68},{"nome":"PREFAZ PROTENDIDA QUADRADA PLENA 20","dext":20,"dint":null,"area":400,"perim":80},{"nome":"PREFAZ PROTENDIDA QUADRADA PLENA 23","dext":23,"dint":null,"area":529,"perim":92},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 23","dext":23,"dint":10,"area":450,"perim":92},{"nome":"PREFAZ PROTENDIDA QUADRADA PLENA 26,5","dext":26.5,"dint":null,"area":702,"perim":106},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 26,5","dext":26.5,"dint":12,"area":589,"perim":106},{"nome":"PREFAZ PROTENDIDA QUADRADA PLENA 30","dext":30,"dint":null,"area":900,"perim":120},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 30","dext":30,"dint":16,"area":699,"perim":120},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 34","dext":34,"dint":20,"area":842,"perim":136},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 35","dext":35,"dint":20,"area":911,"perim":140},{"nome":"PREFAZ PROTENDIDA QUADRADA VAZADA 37,5","dext":37.5,"dint":23,"area":991,"perim":150},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 34","dext":34,"dint":18,"area":653,"perim":107},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 38","dext":38,"dint":21,"area":788,"perim":119},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 40","dext":40,"dint":24,"area":804,"perim":126},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 42","dext":42,"dint":24,"area":933,"perim":132},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 50","dext":50,"dint":31,"area":1209,"perim":157},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 60","dext":60,"dint":38,"area":1693,"perim":188},{"nome":"PREFAZ ARMADA CIRCULAR PLENA 26","dext":26,"dint":null,"area":531,"perim":82},{"nome":"PREFAZ PROTENDIDA CIRCULAR VAZADA 70","dext":70,"dint":46,"area":2187,"perim":220},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 229","dext":22.9,"dint":null,"area":278,"perim":84.1},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 269","dext":26.9,"dint":null,"area":368.5,"perim":93.1},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 298","dext":29.8,"dint":null,"area":445,"perim":101.8},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 360","dext":36,"dint":null,"area":581,"perim":128.7},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 406","dext":40.6,"dint":null,"area":676,"perim":141.8},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 445","dext":44.5,"dint":null,"area":856.5,"perim":162},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 525","dext":52.5,"dint":null,"area":1055.7,"perim":178.9},{"nome":"FOÁ PROTENDIDA ESTRELA ETR 707","dext":70.7,"dint":null,"area":1655,"perim":264.8},{"nome":"FOÁ PROTENDIDA ESTRELA 17 x 17","dext":null,"dint":null,"area":289,"perim":68.1},{"nome":"FOÁ ARMADA ESTRELA ETR 525","dext":52.5,"dint":null,"area":1055.7,"perim":178.9},{"nome":"FOÁ ARMADA ESTRELA ETR 605","dext":60.8,"dint":null,"area":1343,"perim":219},{"nome":"FOÁ ARMADA ESTRELA ETR 707","dext":70.7,"dint":null,"area":1655,"perim":264.6},{"nome":"FOÁ ARMADA ESTRELA ETR 809","dext":80.9,"dint":null,"area":2190,"perim":296.8},{"nome":"INCOPRE ARMADA CIRCULAR PLENA Φ 18","dext":18,"dint":null,"area":254,"perim":57},{"nome":"INCOPRE ARMADA CIRCULAR PLENA Φ 23","dext":23,"dint":null,"area":415,"perim":72},{"nome":"INCOPRE ARMADA CIRCULAR PLENA Φ 26","dext":26,"dint":null,"area":531,"perim":82},{"nome":"INCOPRE ARMADA CIRCULAR VAZADA Φ 33","dext":33,"dint":27.66,"area":601,"perim":104},{"nome":"INCOPRE ARMADA CIRCULAR VAZADA Φ 38","dext":38,"dint":30.98,"area":754,"perim":119},{"nome":"INCOPRE ARMADA CIRCULAR VAZADA Φ 42","dext":42,"dint":33.76,"area":895,"perim":132},{"nome":"INCOPRE ARMADA CIRCULAR VAZADA Φ 50","dext":50,"dint":40.01,"area":1257,"perim":157},{"nome":"INCOPRE ARMADA CIRCULAR VAZADA Φ 60","dext":60,"dint":46.43,"area":1693,"perim":188},{"nome":"INCOPRE PROTENDIDA QUADRADA PLENA Q 17 X 17","dext":17,"dint":null,"area":289,"perim":68},{"nome":"INCOPRE PROTENDIDA QUADRADA PLENA Q 20 X 20","dext":20,"dint":null,"area":400,"perim":80},{"nome":"INCOPRE PROTENDIDA QUADRADA PLENA Q 23 X 23","dext":23,"dint":null,"area":539,"perim":92},{"nome":"INCOPRE PROTENDIDA QUADRADA PLENA Q 26 X 26","dext":26,"dint":null,"area":676,"perim":104},{"nome":"INCOPRE PROTENDIDA QUADRADA VAZADA Q 30 X 30","dext":30,"dint":30.34,"area":723,"perim":120}];
+const TRILHOS=[{"bitola":"TR 25  ASCE 5040","area":31.5,"perim":42.33},{"bitola":"TR 30 ASCE 6040","area":38.39,"perim":46.4},{"bitola":"TR 32  ASCE 6540","area":40.8,"perim":48.68},{"bitola":"TR 37  ASCE 7540","area":47.3,"perim":51.66},{"bitola":"TR 40 ASCE 8040","area":50.71,"perim":53.6},{"bitola":"TR 45  ASCE 90 ARA-A","area":56.9,"perim":59.23},{"bitola":"TR 50  ASCE 100 RE","area":64.2,"perim":62.87},{"bitola":"TR 57  ASCE 115 RE","area":72.5,"perim":67.99},{"bitola":"TR 68  ASCE 136 RE","area":86.1,"perim":74.8},{"bitola":"CR 104","area":null,"perim":null},{"bitola":"CR 105 (TR52)","area":null,"perim":null},{"bitola":"CR  135","area":null,"perim":null},{"bitola":"CR 171","area":null,"perim":null},{"bitola":"CR 175 (TR 87)","area":null,"perim":null},{"bitola":"A 45","area":null,"perim":null},{"bitola":"A 55","area":null,"perim":null},{"bitola":"A 65","area":null,"perim":null},{"bitola":"A 75","area":null,"perim":null},{"bitola":"A 100","area":null,"perim":null},{"bitola":"A 120","area":null,"perim":null},{"bitola":"A 150","area":null,"perim":null}];
+
+/* ═══════════════════════════════════════
+   DATA MODEL
+═══════════════════════════════════════ */
+const TIPOS=[{id:'helice',nome:'Hélice Contínua',icon:'🌀'},{id:'raiz',nome:'Raiz',icon:'🌿'},{id:'metalica',nome:'Metálica',icon:'⚙️'},{id:'trilho',nome:'Trilho',icon:'🛤️'},{id:'premoldada',nome:'Pré-Moldada',icon:'🧱'},{id:'trado',nome:'Trado Mecanizado',icon:'🔧'}];
+/* ═══ OBRAS — camada superior da hierarquia ═══ */
+const OBRAS=[
+  {id:'OB1',nome:'Ed. Residencial Aurora',cidade:'Belo Horizonte — MG',engResp:'Eng. J. Mendes',status:'andamento',inicio:'2025-01-10',prevTermino:'28/06/2025',
+    torres:[
+  {id:'T1',nome:'Torre 1',blocos:[
+    {id:'B01',nome:'Bloco 01',estacas:[
+      {id:'E01A',tipo:'Hélice Contínua',status:'executada',proj:{prof:12,diam:50,volTeor:0.24},exec:{prof:12.3,volComp:0.26,volCam:0.29,leituras:[{prof:2,torque:110,pressao:4.4},{prof:4,torque:120,pressao:4.9},{prof:6,torque:128,pressao:5.2},{prof:9,torque:92,pressao:3.8},{prof:12,torque:122,pressao:5.0}],obs:'Execução normal'}},
+      {id:'E01B',tipo:'Hélice Contínua',status:'executada',proj:{prof:12,diam:50,volTeor:0.24},exec:{prof:12.1,volComp:0.25,volCam:0.27,leituras:[{prof:2,torque:108,pressao:4.3},{prof:5,torque:125,pressao:5.0},{prof:8,torque:131,pressao:5.4},{prof:12,torque:120,pressao:4.9}],obs:''}},
+      {id:'E01C',tipo:'Hélice Contínua',status:'alerta',proj:{prof:12,diam:50,volTeor:0.24},exec:{prof:11.2,volComp:0.31,volCam:0.34,leituras:[{prof:2,torque:112,pressao:4.5},{prof:4,torque:118,pressao:4.8},{prof:6,torque:125,pressao:5.1},{prof:8,torque:88,pressao:3.6},{prof:10,torque:82,pressao:3.3},{prof:11.2,torque:79,pressao:3.1}],obs:'Queda de torque a partir de 8m'}},
+    ]},
+    {id:'B02',nome:'Bloco 02',estacas:[
+      {id:'E02A',tipo:'Metálica',status:'executada',proj:{prof:9,perfil:'W 310 x 44,5',comprTotal:10},exec:{prof:9.0,comprTotal:10.0,nega:2.8,perfil:'W 310 x 44,5',obs:''}},
+      {id:'E02B',tipo:'Metálica',status:'pendente',proj:{prof:9,perfil:'W 310 x 44,5',comprTotal:10},exec:null},
+    ]},
+    {id:'B03',nome:'Bloco 03',estacas:[
+      {id:'E03A',tipo:'Pré-Moldada',status:'executada',proj:{prof:10,secao:'PREFAZ PROTENDIDA QUADRADA PLENA 30',comprTotal:12},exec:{prof:10.0,comprTotal:12.0,nega:3.8,secao:'PREFAZ PROTENDIDA QUADRADA PLENA 30',obs:''}},
+      {id:'E03B',tipo:'Pré-Moldada',status:'pendente',proj:{prof:10,secao:'PREFAZ PROTENDIDA QUADRADA PLENA 30',comprTotal:12},exec:null},
+      {id:'E03C',tipo:'Pré-Moldada',status:'pendente',proj:{prof:10,secao:'PREFAZ PROTENDIDA QUADRADA PLENA 30',comprTotal:12},exec:null},
+    ]},
+    {id:'B04',nome:'Bloco 04',estacas:[
+      {id:'E04A',tipo:'Trilho',status:'executada',proj:{prof:8,bitola:'TR 37  ASCE 7540',comprTotal:9},exec:{prof:8.0,comprTotal:9.0,nega:3.1,bitola:'TR 37  ASCE 7540',obs:''}},
+      {id:'E04B',tipo:'Trilho',status:'pendente',proj:{prof:8,bitola:'TR 37  ASCE 7540',comprTotal:9},exec:null},
+    ]},
+    {id:'B05',nome:'Bloco 05',estacas:[
+      {id:'E05A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:12,diam:50,volTeor:0.24},exec:null},
+      {id:'E05B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:12,diam:50,volTeor:0.24},exec:null},
+    ]},
+  ]},
+  {id:'T2',nome:'Torre 2',blocos:[
+    {id:'B01',nome:'Bloco 01',estacas:[
+      {id:'E01A',tipo:'Hélice Contínua',status:'executada',proj:{prof:14,diam:60,volTeor:0.40},exec:{prof:14.0,volComp:0.41,volCam:0.43,leituras:[{prof:2,torque:120,pressao:4.8},{prof:5,torque:138,pressao:5.5},{prof:10,torque:145,pressao:5.9},{prof:14,torque:141,pressao:5.7}],obs:''}},
+      {id:'E01B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null},
+      {id:'E01C',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null},
+    ]},
+    {id:'B02',nome:'Bloco 02',estacas:[
+      {id:'E02A',tipo:'Raiz',status:'executada',proj:{prof:10,diam:250,volCalda:200},exec:{prof:10.2,volCalda:195,obs:''}},
+      {id:'E02B',tipo:'Raiz',status:'pendente',proj:{prof:10,diam:250,volCalda:200},exec:null},
+    ]},
+    {id:'B03',nome:'Bloco 03',estacas:[
+      {id:'E03A',tipo:'Metálica',status:'pendente',proj:{prof:8,perfil:'W 250 x 44,8',comprTotal:9},exec:null},
+      {id:'E03B',tipo:'Metálica',status:'pendente',proj:{prof:8,perfil:'W 250 x 44,8',comprTotal:9},exec:null},
+    ]},
+  ]},
+  {id:'T3',nome:'Torre 3',blocos:[
+    {id:'B01',nome:'Bloco 01',estacas:[
+      {id:'E01A',tipo:'Trado Mecanizado',status:'pendente',proj:{prof:9,diam:40,volTeor:0.11},exec:null},
+      {id:'E01B',tipo:'Trado Mecanizado',status:'pendente',proj:{prof:9,diam:40,volTeor:0.11},exec:null},
+    ]},
+    {id:'B02',nome:'Bloco 02',estacas:[
+      {id:'E02A',tipo:'Pré-Moldada',status:'pendente',proj:{prof:8,secao:'INCOPRE ARMADA CIRCULAR PLENA Φ 26',comprTotal:10},exec:null},
+    ]},
+    {id:'B03',nome:'Bloco 03',estacas:[
+      {id:'E03A',tipo:'Trilho',status:'pendente',proj:{prof:7,bitola:'TR 45  ASCE 90 ARA-A',comprTotal:8},exec:null},
+      {id:'E03B',tipo:'Trilho',status:'pendente',proj:{prof:7,bitola:'TR 45  ASCE 90 ARA-A',comprTotal:8},exec:null},
+    ]},
+  ]},
+]},
+  {id:'OB2',nome:'Galpão Industrial Norte',cidade:'Contagem — MG',engResp:'Eng. R. Carvalho',status:'andamento',inicio:'2025-03-01',prevTermino:'15/09/2025',
+    torres:[
+      {id:'T1',nome:'Nave A',blocos:[
+        {id:'B01',nome:'Bloco 01',estacas:[
+          {id:'E01A',tipo:'Hélice Contínua',status:'executada',proj:{prof:10,diam:40,volTeor:0.13},exec:{prof:10.1,volComp:0.14,volCam:0.15,leituras:[{prof:2,torque:98,pressao:3.9},{prof:5,torque:112,pressao:4.5},{prof:8,torque:118,pressao:4.7},{prof:10,torque:115,pressao:4.6}],obs:''}},
+          {id:'E01B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:10,diam:40,volTeor:0.13},exec:null},
+        ]},
+        {id:'B02',nome:'Bloco 02',estacas:[
+          {id:'E02A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:10,diam:40,volTeor:0.13},exec:null},
+          {id:'E02B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:10,diam:40,volTeor:0.13},exec:null},
+          {id:'E02C',tipo:'Hélice Contínua',status:'pendente',proj:{prof:10,diam:40,volTeor:0.13},exec:null},
+        ]},
+        {id:'B03',nome:'Bloco 03',estacas:[
+          {id:'E03A',tipo:'Trilho',status:'executada',proj:{prof:6,bitola:'TR 45  ASCE 90 ARA-A',comprTotal:7},exec:{prof:6.0,nega:2.5,bitola:'TR 45  ASCE 90 ARA-A',obs:''}},
+          {id:'E03B',tipo:'Trilho',status:'pendente',proj:{prof:6,bitola:'TR 45  ASCE 90 ARA-A',comprTotal:7},exec:null},
+        ]},
+      ]},
+      {id:'T2',nome:'Nave B',blocos:[
+        {id:'B01',nome:'Bloco 01',estacas:[
+          {id:'E01A',tipo:'Metálica',status:'pendente',proj:{prof:7,perfil:'W 200 x 35,9 (H)',comprTotal:8},exec:null},
+          {id:'E01B',tipo:'Metálica',status:'pendente',proj:{prof:7,perfil:'W 200 x 35,9 (H)',comprTotal:8},exec:null},
+          {id:'E01C',tipo:'Metálica',status:'pendente',proj:{prof:7,perfil:'W 200 x 35,9 (H)',comprTotal:8},exec:null},
+          {id:'E01D',tipo:'Metálica',status:'pendente',proj:{prof:7,perfil:'W 200 x 35,9 (H)',comprTotal:8},exec:null},
+        ]},
+        {id:'B02',nome:'Bloco 02',estacas:[
+          {id:'E02A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:9,diam:40,volTeor:0.11},exec:null},
+        ]},
+      ]},
+    ]},
+  {id:'OB3',nome:'Condomínio Parque Verde',cidade:'Nova Lima — MG',engResp:'Eng. P. Souza',status:'planejamento',inicio:'2025-07-01',prevTermino:'28/02/2026',
+    torres:[
+      {id:'T1',nome:'Bloco Res. 1',blocos:[
+        {id:'B01',nome:'Bloco 01',estacas:[{id:'E01A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:15,diam:60,volTeor:0.42},exec:null},{id:'E01B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:15,diam:60,volTeor:0.42},exec:null},{id:'E01C',tipo:'Hélice Contínua',status:'pendente',proj:{prof:15,diam:60,volTeor:0.42},exec:null}]},
+        {id:'B02',nome:'Bloco 02',estacas:[{id:'E02A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null},{id:'E02B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null}]},
+      ]},
+      {id:'T2',nome:'Bloco Res. 2',blocos:[
+        {id:'B01',nome:'Bloco 01',estacas:[{id:'E01A',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null},{id:'E01B',tipo:'Hélice Contínua',status:'pendente',proj:{prof:14,diam:60,volTeor:0.40},exec:null}]},
+      ]},
+    ]},
+];
+let obraAtiva=OBRAS[0];
+function obraEstacas(obra){const a=[];obra.torres.forEach(t=>t.blocos.forEach(b=>b.estacas.forEach(e=>a.push({...e,torreId:t.id,torreNome:t.nome,blocoId:b.id,blocoNome:b.nome}))));return a;}
+function allEstacas(){return obraEstacas(obraAtiva);}
+function findEstaca(tId,bId,eId){const t=obraAtiva.torres.find(x=>x.id===tId);if(!t)return null;const b=t.blocos.find(x=>x.id===bId);if(!b)return null;return b.estacas.find(x=>x.id===eId)||null;}
+function obraStats(obra){const all=obraEstacas(obra);return{total:all.length,exec:all.filter(e=>e.status==='executada').length,alrt:all.filter(e=>e.status==='alerta').length,pend:all.filter(e=>e.status==='pendente').length};}
+/* ─ obra panel ─ */
+function updateTopbar(){
+  document.getElementById('obra-nome').textContent=obraAtiva.nome;
+  const dotColors={andamento:'#5DCAA5',concluida:'#639922',planejamento:'#EF9F27'};
+  document.getElementById('obra-dot').style.background=dotColors[obraAtiva.status]||'#5DCAA5';
+}
+function toggleObraPanel(){const ol=document.getElementById('obra-overlay');ol.style.display=ol.style.display==='none'?'flex':'none';}
+function closeObraPanel(){document.getElementById('obra-overlay').style.display='none';}
+function renderObraPanel(){
+  const icons={andamento:'🏗️',concluida:'✅',planejamento:'📋'};
+  const labels={andamento:'Em andamento',concluida:'Concluída',planejamento:'Planejamento'};
+  const dotC={andamento:'#5DCAA5',concluida:'#639922',planejamento:'#EF9F27'};
+  document.getElementById('obra-panel-body').innerHTML=OBRAS.map(o=>{
+    const s=obraStats(o),pct=s.total>0?(((s.exec+s.alrt)/s.total)*100).toFixed(0):0;
+    const isActive=o.id===obraAtiva.id;
+    return`<div onclick="selectObra('${o.id}')" style="border:${isActive?'1.5px solid #185FA5':'1px solid #e4eaf5'};background:${isActive?'#e6f1fb':'#fff'};border-radius:10px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:14px;margin-bottom:8px">
+      <div style="width:40px;height:40px;border-radius:8px;background:${isActive?'#185FA5':'#f4f6fa'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icons[o.status]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:#042C53;margin-bottom:3px">${o.nome}${isActive?' <span style="font-size:10px;color:#185FA5">▶ ativa</span>':''}</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace">${o.cidade} · ${s.total} estacas</div>
+        <div style="margin-top:5px"><div style="background:#e8edf5;border-radius:4px;height:5px;overflow:hidden"><div style="height:100%;background:${dotC[o.status]};width:${pct}%;border-radius:4px"></div></div><span style="font-size:10px;color:#888;font-family:'DM Mono',monospace">${s.exec+s.alrt}/${s.total} · ${pct}%</span></div>
+      </div>
+      <span style="font-size:10px;padding:3px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-weight:500;background:${isActive?'#185FA5':'#f4f6fa'};color:${isActive?'#fff':'#888'};white-space:nowrap">${labels[o.status]}</span>
+    </div>`;
+  }).join('')+
+  `<div onclick="closeObraPanel();showToast('Cadastro de nova obra em breve!')" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border:1.5px dashed #d0d8e8;border-radius:10px;cursor:pointer;color:#888;font-size:13px;margin-top:4px">
+    <span style="font-size:18px">＋</span> Nova obra
+  </div>`;
+}
+function selectObra(id){
+  obraAtiva=OBRAS.find(o=>o.id===id);
+  closeObraPanel();updateTopbar();renderObraPanel();
+  const sid=document.querySelector('.section.active')?.id.replace('sec-','')||'dashboard';
+  go(sid);
+}
+
+
+
+
+/* ═══ NAV ═══ */
+function go(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['dashboard','estrutura','estacas','registrar','comparativo'][i]===id));
+  if(id==='dashboard')renderDashboard();
+  if(id==='estrutura')renderTorres();
+  if(id==='estacas')renderEstacasList();
+  if(id==='registrar')initRegistrar();
+  if(id==='comparativo')initComp();
+}
+
+/* ═══ DASHBOARD ═══ */
+function renderDashboard(){
+  updateTopbar();
+  const obraTagEl=document.getElementById('dash-obra-tag');if(obraTagEl)obraTagEl.textContent=obraAtiva.nome;
+  renderObraPanel();
+  const all=allEstacas(),exec=all.filter(e=>e.status==='executada').length,alrt=all.filter(e=>e.status==='alerta').length,total=all.length;
+  document.getElementById('m-total').textContent=total;document.getElementById('m-exec').textContent=exec+alrt;
+  document.getElementById('m-pend').textContent=total-exec-alrt;document.getElementById('m-alert').textContent=alrt;
+  const pct=((exec+alrt)/total*100).toFixed(1);
+  document.getElementById('prog-pct').textContent=pct+'%';document.getElementById('prog-bar').style.width=pct+'%';
+  
+  // visão cruzada de todas as obras
+  const todasEl=document.getElementById('dash-todas-obras');
+  if(todasEl){const dotC={andamento:'#378ADD',concluida:'#639922',planejamento:'#EF9F27'};todasEl.innerHTML='<div style="font-size:10px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.06em;font-family:DM Mono,monospace;margin-bottom:10px">Todas as obras</div>'+OBRAS.map(o=>{const os=obraStats(o),op=os.total>0?(((os.exec+os.alrt)/os.total)*100).toFixed(0):0;const isA=o.id===obraAtiva.id;return`<div onclick="selectObra('${o.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f3f9;cursor:pointer"><span style="font-size:12px;font-weight:${isA?600:400};color:${isA?'#042C53':'#555'};min-width:180px">${o.nome}${isA?' ◀':''}</span><div style="flex:1;background:#e8edf5;border-radius:4px;height:7px;overflow:hidden"><div style="height:100%;background:${dotC[o.status]||'#378ADD'};width:${op}%;border-radius:4px"></div></div><span style="font-size:11px;color:#888;font-family:'DM Mono',monospace;min-width:72px;text-align:right">${os.exec+os.alrt}/${os.total} · ${op}%</span></div>`;}).join('');}
+  
+  document.getElementById('torre-progress').innerHTML=obraAtiva.torres.map(t=>{
+    const es=allEstacas().filter(e=>e.torreId===t.id),done=es.filter(e=>e.status!=='pendente').length,p=(done/es.length*100).toFixed(0);
+    return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:600">${t.nome}</span><span style="color:#888;font-family:'DM Mono',monospace">${done}/${es.length} · ${p}%</span></div><div class="progress-wrap"><div class="progress-fill progress-green" style="width:${p}%"></div></div></div>`;
+  }).join('');
+  const recentes=allEstacas().filter(e=>e.status!=='pendente').slice(0,6);
+  document.getElementById('last-exec').innerHTML=recentes.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f0f3f9"><span style="font-size:11px;font-weight:600;min-width:40px;font-family:'DM Mono',monospace">${e.id}</span><span class="hier-tag hier-torre">${e.torreNome}</span><span class="hier-tag hier-bloco">${e.blocoNome}</span><span class="status-badge s-${e.status}" style="margin-left:auto">${e.status}</span></div>`).join('');
+}
+
+/* ═══ ESTRUTURA ═══ */
+let currentTorre=null;
+function renderTorres(){
+  document.getElementById('view-torres').style.display='';document.getElementById('view-blocos').style.display='none';
+  const all=allEstacas();
+  document.getElementById('torres-grid').innerHTML=obraAtiva.torres.map(t=>{
+    const es=all.filter(e=>e.torreId===t.id),done=es.filter(e=>e.status!=='pendente').length,alrt=es.filter(e=>e.status==='alerta').length,p=(done/es.length*100).toFixed(0);
+    return`<div class="torre-card" onclick="showBlocos('${t.id}')"><div class="torre-card-name">${t.nome}</div><div class="torre-card-sub">${t.blocos.length} blocos · ${es.length} estacas</div><div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-bottom:3px;font-family:'DM Mono',monospace"><span>Progresso</span><span>${p}%</span></div><div class="progress-wrap"><div class="progress-fill progress-green" style="width:${p}%"></div></div>${alrt?`<div style="margin-top:8px;font-size:10px;color:#854F0B;font-family:'DM Mono',monospace">⚠ ${alrt} alerta${alrt>1?'s':''}</div>`:''}</div>`;
+  }).join('');
+}
+function showBlocos(tId){
+  currentTorre=obraAtiva.torres.find(t=>t.id===tId);
+  document.getElementById('view-torres').style.display='none';document.getElementById('view-blocos').style.display='';
+  document.getElementById('blocos-title').textContent=`${currentTorre.nome} — Blocos`;
+  document.getElementById('blocos-torre-tag').textContent=currentTorre.nome;
+  document.getElementById('blocos-grid').innerHTML=currentTorre.blocos.map(b=>{
+    const done=b.estacas.filter(e=>e.status!=='pendente').length,alrt=b.estacas.filter(e=>e.status==='alerta').length,p=(done/b.estacas.length*100).toFixed(0);
+    const chips=b.estacas.map(e=>`<span class="estaca-chip s-${e.status}" onclick="event.stopPropagation();openEstacaCtx('${currentTorre.id}','${b.id}','${e.id}')">${e.id}</span>`).join('');
+    return`<div class="bloco-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div class="bloco-card-name">${b.nome}</div><span style="font-size:10px;color:#aaa;font-family:'DM Mono',monospace">${done}/${b.estacas.length} · ${p}%</span></div><div style="font-size:11px;color:#888;margin-bottom:4px">${b.estacas.length} estaca${b.estacas.length>1?'s':''} · ${b.estacas[0].tipo}</div><div class="progress-wrap"><div class="progress-fill ${alrt?'progress-blue':'progress-green'}" style="width:${p}%"></div></div><div class="bloco-estacas">${chips}</div></div>`;
+  }).join('');
+}
+function showTorres(){document.getElementById('view-torres').style.display='';document.getElementById('view-blocos').style.display='none';}
+function openEstacaCtx(tId,bId,eId){
+  const e=findEstaca(tId,bId,eId);if(!e)return;
+  if(e.status==='pendente'){
+    go('registrar');
+    setTimeout(()=>{document.getElementById('reg-torre').value=tId;onTorreSel();
+    setTimeout(()=>{document.getElementById('reg-bloco').value=bId;onBlocoSel();
+    setTimeout(()=>{document.getElementById('reg-estaca').value=eId;onEstacaSel();},60);},60);},80);
+  } else {
+    go('comparativo');
+    setTimeout(()=>{document.getElementById('comp-torre').value=tId;onCompTorreSel();
+    setTimeout(()=>{document.getElementById('comp-estaca').value=`${tId}|${bId}|${eId}`;renderComp();},60);},80);
+  }
+}
+
+/* ═══ ESTACAS LIST ═══ */
+function initEstacasFilters(){
+  const tSel=document.getElementById('filt-torre');tSel.innerHTML='<option value="">Todas as torres</option>';
+  obraAtiva.torres.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nome;tSel.appendChild(o);});
+  const tpSel=document.getElementById('filt-tp');tpSel.innerHTML='<option value="">Todos tipos</option>';
+  TIPOS.forEach(t=>{const o=document.createElement('option');o.value=t.nome;o.textContent=t.nome;tpSel.appendChild(o);});
+}
+function renderEstacasList(){
+  const q=(document.getElementById('search-e').value||'').toLowerCase(),st=document.getElementById('filt-st').value,tp=document.getElementById('filt-tp').value,tId=document.getElementById('filt-torre').value;
+  const filtered=allEstacas().filter(e=>(!q||e.id.toLowerCase().includes(q)||e.torreNome.toLowerCase().includes(q)||e.blocoNome.toLowerCase().includes(q))&&(!st||e.status===st)&&(!tp||e.tipo===tp)&&(!tId||e.torreId===tId));
+  document.getElementById('estaca-list').innerHTML=filtered.map(e=>`<div class="estaca-row" onclick="openEstacaCtx('${e.torreId}','${e.blocoId}','${e.id}')"><span class="estaca-id">${e.id}</span><span class="tipo-pill">${e.tipo}</span><span class="hier-tag hier-torre">${e.torreNome}</span><span class="hier-tag hier-bloco">${e.blocoNome}</span><span style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;flex:1">proj: ${e.proj.prof}m</span><span class="status-badge s-${e.status}">${e.status}</span></div>`).join('');
+}
+
+/* ═══════════════════════════════════════
+   CATALOG MODULE
+═══════════════════════════════════════ */
+// each catalog instance: { tid, db, labelFn, specsFn, selectedItem, filtered }
+const catState={};
+
+function catProp(label,val,unit){
+  if(val==null)return'';
+  return`<div class="prop-item"><div class="prop-label">${label}</div><div class="prop-value">${typeof val==='number'?val.toLocaleString('pt-BR'):val}<span class="prop-unit"> ${unit||''}</span></div></div>`;
+}
+
+function buildCatalogHTML(tid){
+  const cfg=getCatConfig(tid);
+  return`<div class="cat-module" id="cat-${tid}">
+    <div class="cat-header">
+      <div class="cat-header-title">${cfg.title}</div>
+      <span class="cat-header-count" id="cat-count-${tid}"></span>
+    </div>
+    <div class="cat-body">
+      <div id="cat-sel-card-${tid}"></div>
+      <div id="cat-list-wrap-${tid}">
+        <div class="cat-search"><input class="cat-search-input" id="cat-q-${tid}" placeholder="${cfg.placeholder}" oninput="catFilter('${tid}')"></div>
+        <div class="cat-list" id="cat-list-${tid}"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function getCatConfig(tid){
+  if(tid==='metalica') return{title:'4. Selecione o perfil metálico (catálogo)',placeholder:'Buscar por bitola (ex: W 310, W 250...)',db:METALICOS};
+  if(tid==='premoldada') return{title:'4. Selecione a estaca pré-moldada (catálogo)',placeholder:'Buscar por fabricante ou dimensão (ex: PREFAZ, CIRCULAR, 30...)',db:PREMOLDADAS};
+  if(tid==='trilho') return{title:'4. Selecione a bitola do trilho (catálogo)',placeholder:'Buscar por bitola (ex: TR 37, CR 104, A 75...)',db:TRILHOS};
+  return{title:'Catálogo',placeholder:'Buscar...',db:[]};
+}
+
+function catInit(tid){
+  const cfg=getCatConfig(tid);
+  catState[tid]={selected:null,filtered:[...cfg.db]};
+  catRenderList(tid);
+  catRenderSelCard(tid);
+}
+
+function catFilter(tid){
+  const q=(document.getElementById('cat-q-'+tid).value||'').toLowerCase();
+  const cfg=getCatConfig(tid);
+  catState[tid].filtered=q?cfg.db.filter(item=>{
+    const key=item.bitola||item.nome||'';
+    return key.toLowerCase().includes(q);
+  }):[...cfg.db];
+  catRenderList(tid);
+}
+
+function catSelect(tid,idx){
+  const cfg=getCatConfig(tid);
+  catState[tid].selected=cfg.db[idx];
+  catState[tid].filtered=[...cfg.db];
+  if(document.getElementById('cat-q-'+tid)) document.getElementById('cat-q-'+tid).value='';
+  catRenderList(tid);
+  catRenderSelCard(tid);
+  // hide list, show only card + change button
+  document.getElementById('cat-list-wrap-'+tid).style.display='none';
+  // auto-fill readonly fields
+  catAutoFill(tid);
+}
+
+function catChangeSel(tid){
+  catState[tid].selected=null;
+  document.getElementById('cat-list-wrap-'+tid).style.display='';
+  catRenderSelCard(tid);
+  catRenderList(tid);
+  catAutoFill(tid);
+}
+
+function catAutoFill(tid){
+  const s=catState[tid]?.selected;
+  if(tid==='metalica'){
+    const v=s?s.bitola:'';
+    const el=document.getElementById('m-perfil-sel');if(el)el.value=v;
+    const d=document.getElementById('m-d');if(d)d.value=s?s.d:'';
+    const bf=document.getElementById('m-bf');if(bf)bf.value=s?s.bf:'';
+    const a=document.getElementById('m-area');if(a)a.value=s?s.area:'';
+    const ms=document.getElementById('m-massa');if(ms)ms.value=s?s.massa:'';
+  }
+  if(tid==='premoldada'){
+    const el=document.getElementById('p-modelo-sel');if(el)el.value=s?s.nome:'';
+    const de=document.getElementById('p-dext');if(de)de.value=s?s.dext??'':'';
+    const di=document.getElementById('p-dint');if(di)di.value=s?s.dint??'':'';
+    const a=document.getElementById('p-area');if(a)a.value=s?s.area:'';
+  }
+  if(tid==='trilho'){
+    const el=document.getElementById('t-bitola-sel');if(el)el.value=s?s.bitola:'';
+    const a=document.getElementById('t-area');if(a)a.value=s?s.area??'':'';
+  }
+}
+
+function catRenderSelCard(tid){
+  const el=document.getElementById('cat-sel-card-'+tid);if(!el)return;
+  const s=catState[tid]?.selected;
+  if(!s){el.innerHTML=`<div class="no-sel-msg">← Selecione um item na lista abaixo</div>`;return;}
+  let props='',extra='';
+  if(tid==='metalica'){
+    props=catProp('d (altura)',s.d,'mm')+catProp('bf (aba)',s.bf,'mm')+catProp('tw (alma)',s.tw,'mm')+catProp('tf (mesa)',s.tf,'mm')+catProp('Área',s.area,'cm²')+catProp('Massa',s.massa,'kg/m');
+    extra=`<div class="carga-row"><span style="font-size:11px;color:#888;font-family:'DM Mono',monospace">Carga adm. estática:</span>${s.carga166!=null?`<span class="carga-badge carga-166">FS 1,66 → ${s.carga166} tf</span>`:''} ${s.carga200!=null?`<span class="carga-badge carga-200">FS 2,00 → ${s.carga200} tf</span>`:''}</div>`;
+  } else if(tid==='premoldada'){
+    props=catProp('Ø externo',s.dext,'cm')+catProp('Ø interno',s.dint,'cm')+catProp('Área útil',s.area,'cm²')+catProp('Perímetro',s.perim,'cm');
+  } else if(tid==='trilho'){
+    props=catProp('Área seção',s.area,'cm²')+catProp('Perímetro',s.perim,'cm');
+  }
+  el.innerHTML=`<div class="sel-card"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px"><div><div class="sel-card-label">Perfil selecionado</div><div class="sel-card-name">${s.bitola||s.nome||''}</div></div><button class="change-btn" onclick="catChangeSel('${tid}')">trocar ↺</button></div><div class="props-grid">${props}</div>${extra}</div>`;
+}
+
+function catRenderList(tid){
+  const el=document.getElementById('cat-list-'+tid);if(!el)return;
+  const st=catState[tid];if(!st)return;
+  const cfg=getCatConfig(tid);
+  const countEl=document.getElementById('cat-count-'+tid);
+  if(countEl) countEl.textContent=`${st.filtered.length} / ${cfg.db.length}`;
+  if(!st.filtered.length){el.innerHTML='<div class="cat-empty">Nenhum resultado</div>';return;}
+  el.innerHTML=st.filtered.map(item=>{
+    const globalIdx=cfg.db.indexOf(item);
+    const isSel=st.selected&&(item.bitola===st.selected.bitola||item.nome===st.selected.nome);
+    let specs='';
+    if(tid==='metalica') specs=`<div class="cat-spec"><strong>${item.d}</strong>d (mm)</div><div class="cat-spec"><strong>${item.bf}</strong>bf (mm)</div><div class="cat-spec"><strong>${item.area}</strong>A (cm²)</div><div class="cat-spec"><strong>${item.carga166??'—'}</strong>C.adm tf</div>`;
+    else if(tid==='premoldada') specs=`<div class="cat-spec"><strong>${item.dext??'—'}</strong>Ø ext (cm)</div><div class="cat-spec"><strong>${item.dint??'—'}</strong>Ø int (cm)</div><div class="cat-spec"><strong>${item.area}</strong>A (cm²)</div>`;
+    else if(tid==='trilho') specs=`<div class="cat-spec"><strong>${item.area??'—'}</strong>Área (cm²)</div><div class="cat-spec"><strong>${item.perim??'—'}</strong>Per. (cm)</div>`;
+    return`<div class="cat-row${isSel?' selected':''}" onclick="catSelect('${tid}',${globalIdx})"><div class="cat-radio">${isSel?'●':'○'}</div><div class="cat-name">${item.bitola||item.nome||''}</div><div class="cat-specs">${specs}</div></div>`;
+  }).join('');
+}
+
+/* ═══ REGISTRAR ═══ */
+let selectedTipo=null,tpMode='torque',tpLeituras=[],tpChart=null,tpProjProf=12;
+function initRegistrar(){
+  selectedTipo=null;tpLeituras=[];tpMode='torque';
+  if(tpChart){tpChart.destroy();tpChart=null;}
+  document.getElementById('form-body').style.display='none';
+  document.getElementById('tp-module-wrap').style.display='none';
+  document.getElementById('reg-info').style.display='none';
+  const tSel=document.getElementById('reg-torre');tSel.innerHTML='<option value="">— selecione —</option>';
+  obraAtiva.torres.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nome;tSel.appendChild(o);});
+  document.getElementById('reg-bloco').innerHTML='<option value="">— selecione torre primeiro —</option>';
+  document.getElementById('reg-estaca').innerHTML='<option value="">— selecione bloco —</option>';
+  document.getElementById('tipo-grid').innerHTML=TIPOS.map(t=>`<div class="tipo-card" id="tc-${t.id}" onclick="selectTipo('${t.id}')"><div style="font-size:20px">${t.icon}</div><div class="tipo-card-name">${t.nome}</div></div>`).join('');
+  const now=new Date();document.getElementById('f-data').value=now.toISOString().split('T')[0];document.getElementById('f-hora').value=now.toTimeString().slice(0,5);
+}
+function onTorreSel(){
+  const tId=document.getElementById('reg-torre').value,t=obraAtiva.torres.find(x=>x.id===tId);
+  const bSel=document.getElementById('reg-bloco');bSel.innerHTML='<option value="">— selecione —</option>';
+  document.getElementById('reg-estaca').innerHTML='<option value="">— selecione bloco —</option>';
+  document.getElementById('form-body').style.display='none';document.getElementById('reg-info').style.display='none';
+  if(t)t.blocos.forEach(b=>{const o=document.createElement('option');o.value=b.id;o.textContent=`${b.nome} (${b.estacas.length} estaca${b.estacas.length>1?'s':''})`;bSel.appendChild(o);});
+}
+function onBlocoSel(){
+  const tId=document.getElementById('reg-torre').value,bId=document.getElementById('reg-bloco').value;
+  const t=obraAtiva.torres.find(x=>x.id===tId),b=t?t.blocos.find(x=>x.id===bId):null;
+  const eSel=document.getElementById('reg-estaca');eSel.innerHTML='<option value="">— selecione —</option>';
+  document.getElementById('form-body').style.display='none';document.getElementById('reg-info').style.display='none';
+  if(b)b.estacas.filter(e=>e.status==='pendente').forEach(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=`${e.id} — ${e.tipo}`;eSel.appendChild(o);});
+}
+function onEstacaSel(){
+  const tId=document.getElementById('reg-torre').value,bId=document.getElementById('reg-bloco').value,eId=document.getElementById('reg-estaca').value;
+  if(!eId)return;
+  const e=findEstaca(tId,bId,eId);if(!e)return;
+  const info=document.getElementById('reg-info');info.style.display='block';
+  info.innerHTML=`<span class="hier-tag hier-torre" style="margin-right:4px">${obraAtiva.torres.find(t=>t.id===tId).nome}</span> › <span class="hier-tag hier-bloco" style="margin:0 4px">${obraAtiva.torres.find(t=>t.id===tId).blocos.find(b=>b.id===bId).nome}</span> › <strong>${eId}</strong> &nbsp;·&nbsp; ${e.tipo} &nbsp;·&nbsp; Prof. proj: ${e.proj.prof} m`;
+  const tipObj=TIPOS.find(x=>x.nome===e.tipo);
+  if(tipObj)selectTipo(tipObj.id);
+  // pre-select catalog item if proj has one
+  if(e.tipo==='Metálica'&&e.proj.perfil) setTimeout(()=>{const idx=METALICOS.findIndex(m=>m.bitola===e.proj.perfil);if(idx>=0)catSelect('metalica',idx);},100);
+  if(e.tipo==='Pré-Moldada'&&e.proj.secao) setTimeout(()=>{const idx=PREMOLDADAS.findIndex(p=>p.nome===e.proj.secao);if(idx>=0)catSelect('premoldada',idx);},100);
+  if(e.tipo==='Trilho'&&e.proj.bitola) setTimeout(()=>{const idx=TRILHOS.findIndex(t=>t.bitola===e.proj.bitola);if(idx>=0)catSelect('trilho',idx);},100);
+}
+function selectTipo(tid){
+  selectedTipo=tid;
+  document.querySelectorAll('.tipo-card').forEach(c=>c.classList.remove('selected'));
+  const tc=document.getElementById('tc-'+tid);if(tc)tc.classList.add('selected');
+  renderEspecifico(tid);
+  document.getElementById('form-body').style.display='block';
+  const isHelice=tid==='helice';
+  document.getElementById('tp-module-wrap').style.display=isHelice?'block':'none';
+  if(isHelice){
+    const tId=document.getElementById('reg-torre').value,bId=document.getElementById('reg-bloco').value,eId=document.getElementById('reg-estaca').value;
+    const e=findEstaca(tId,bId,eId);tpProjProf=e?e.proj.prof:12;
+    const torre=obraAtiva.torres.find(t=>t.id===tId);
+    document.getElementById('tp-estaca-sub').textContent=eId?`${torre?torre.nome:''} · ${eId} · ⌀${e?e.proj.diam:50} cm`:'Hélice Contínua';
+    tpSetMode('ambos');tpRender();
+  }
+  // init catalog if needed
+  if(['metalica','premoldada','trilho'].includes(tid)){
+    setTimeout(()=>catInit(tid),30);
+  }
+}
+
+function renderEspecifico(tid){
+  const fe=document.getElementById('form-especifico');
+  let h='';
+  if(tid==='helice'){
+    h=`<div class="card"><div class="card-title">4. Geometria e concretagem</div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Diâmetro (cm)</label><input type="number" id="f-diam"></div><div class="form-group"><label class="form-label">Prof. real — trado (m)</label><input type="number" id="f-prof" step="0.01"></div><div class="form-group"><label class="form-label">Pressão positiva?</label><select id="f-press"><option>Sim</option><option>Não</option></select></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Vol. teórico (m³)</label><input type="number" id="f-volt" step="0.001"></div><div class="form-group"><label class="form-label">Vol. computador HC (m³)</label><input type="number" id="f-volc" step="0.001"></div><div class="form-group"><label class="form-label">Vol. caminhão HC (m³)</label><input type="number" id="f-volcam" step="0.001"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Armação — qtd e bitola (N1)</label><input type="text" id="f-arm" placeholder="ex: 4 ⌀ 20mm"></div><div class="form-group"><label class="form-label">Comprimento armação (m)</label><input type="number" id="f-compr" step="0.01"></div></div>
+    </div>`;
+  } else if(tid==='raiz'){
+    h=`<div class="card"><div class="card-title">4. Geometria e injeção</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Diâmetro perfuração (mm)</label><input type="number" id="f-diam"></div><div class="form-group"><label class="form-label">Prof. executada (m)</label><input type="number" id="f-prof" step="0.01"></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Pressão injeção (bar)</label><input type="number" id="f-pinj" step="0.1"></div><div class="form-group"><label class="form-label">Vol. calda (L)</label><input type="number" id="f-vcalda"></div><div class="form-group"><label class="form-label">Consumo cimento (kg)</label><input type="number" id="f-cim"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Tipo de armação</label><select><option>Barra</option><option>Tubo</option></select></div><div class="form-group"><label class="form-label">Comprimento armação (m)</label><input type="number" id="f-compr" step="0.01"></div></div>
+    </div>`;
+  } else if(tid==='metalica'){
+    h=buildCatalogHTML('metalica')+
+    `<div class="card"><div class="card-title">5. Dados do perfil selecionado (auto-preenchidos)</div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Bitola</label><input type="text" id="m-perfil-sel" readonly></div><div class="form-group"><label class="form-label">d — altura (mm)</label><input type="number" id="m-d" readonly></div><div class="form-group"><label class="form-label">bf — aba (mm)</label><input type="number" id="m-bf" readonly></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Área (cm²)</label><input type="number" id="m-area" readonly></div><div class="form-group"><label class="form-label">Massa linear (kg/m)</label><input type="number" id="m-massa" readonly></div></div>
+      <hr style="border:none;border-top:1px solid #e4eaf5;margin:10px 0">
+      <div class="card-title">6. Dados de cravação</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Compr. projetado (m)</label><input type="number" id="f-compproj" step="0.01"></div><div class="form-group"><label class="form-label">Compr. cravado (m)</label><input type="number" id="f-prof" step="0.01"></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Tipo de martelo</label><input type="text" id="f-martelo"></div><div class="form-group"><label class="form-label">Nega (mm/10 golpes)</label><input type="number" id="f-nega" step="0.1"></div><div class="form-group"><label class="form-label">Repique (mm/golpe)</label><input type="number" id="f-repique" step="0.1"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Nº golpes/metro</label><input type="number" id="f-golpes"></div><div class="form-group"><label class="form-label">Prof. de parada (m)</label><input type="number" id="f-parada" step="0.01"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Nº de emendas</label><input type="number" id="f-emendas" value="0" min="0"></div><div class="form-group"><label class="form-label">Tipo de emenda</label><select><option>—</option><option>Solda</option><option>Parafuso</option><option>Luva</option></select></div></div>
+    </div>`;
+  } else if(tid==='trilho'){
+    h=buildCatalogHTML('trilho')+
+    `<div class="card"><div class="card-title">5. Dados do trilho selecionado (auto-preenchidos)</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Bitola</label><input type="text" id="t-bitola-sel" readonly></div><div class="form-group"><label class="form-label">Área da seção (cm²)</label><input type="number" id="t-area" readonly></div></div>
+      <hr style="border:none;border-top:1px solid #e4eaf5;margin:10px 0">
+      <div class="card-title">6. Dados de cravação</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Compr. projetado (m)</label><input type="number" id="f-compproj" step="0.01"></div><div class="form-group"><label class="form-label">Compr. cravado (m)</label><input type="number" id="f-prof" step="0.01"></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Tipo de martelo</label><input type="text" id="f-martelo"></div><div class="form-group"><label class="form-label">Nega (mm/10 golpes)</label><input type="number" id="f-nega" step="0.1"></div><div class="form-group"><label class="form-label">Repique (mm/golpe)</label><input type="number" id="f-repique" step="0.1"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Nº golpes/metro</label><input type="number" id="f-golpes"></div><div class="form-group"><label class="form-label">Prof. de parada (m)</label><input type="number" id="f-parada" step="0.01"></div></div>
+    </div>`;
+  } else if(tid==='premoldada'){
+    h=buildCatalogHTML('premoldada')+
+    `<div class="card"><div class="card-title">5. Dados do modelo selecionado (auto-preenchidos)</div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Modelo</label><input type="text" id="p-modelo-sel" readonly style="font-size:11px"></div><div class="form-group"><label class="form-label">Ø externo (cm)</label><input type="number" id="p-dext" readonly></div><div class="form-group"><label class="form-label">Ø interno (cm)</label><input type="number" id="p-dint" readonly></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Área útil (cm²)</label><input type="number" id="p-area" readonly></div></div>
+      <hr style="border:none;border-top:1px solid #e4eaf5;margin:10px 0">
+      <div class="card-title">6. Dados de cravação</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Compr. segmento (m)</label><input type="number" id="p-seg" step="0.01"></div><div class="form-group"><label class="form-label">Compr. total projetado (m)</label><input type="number" id="f-compproj" step="0.01"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Compr. total cravado (m)</label><input type="number" id="f-prof" step="0.01"></div><div class="form-group"><label class="form-label">Prof. de parada (m)</label><input type="number" id="f-parada" step="0.01"></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Tipo de martelo</label><input type="text" id="f-martelo"></div><div class="form-group"><label class="form-label">Nega (mm/10 golpes)</label><input type="number" id="f-nega" step="0.1"></div><div class="form-group"><label class="form-label">Repique (mm/golpe)</label><input type="number" id="f-repique" step="0.1"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Nº de emendas</label><input type="number" id="f-emendas" value="0" min="0"></div><div class="form-group"><label class="form-label">Tipo de emenda</label><select><option>—</option><option>Solda</option><option>Luva metálica</option><option>Costura de aço</option></select></div></div>
+    </div>`;
+  } else if(tid==='trado'){
+    h=`<div class="card"><div class="card-title">4. Geometria e concretagem</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Diâmetro (cm)</label><input type="number" id="f-diam"></div><div class="form-group"><label class="form-label">Prof. executada (m)</label><input type="number" id="f-prof" step="0.01"></div></div>
+      <div class="form-row3"><div class="form-group"><label class="form-label">Vol. teórico (m³)</label><input type="number" id="f-volt" step="0.001"></div><div class="form-group"><label class="form-label">Vol. consumido (m³)</label><input type="number" id="f-volr" step="0.001"></div><div class="form-group"><label class="form-label">FCK (MPa)</label><input type="number" id="f-fck"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Tipo de armação</label><input type="text" id="f-arm"></div><div class="form-group"><label class="form-label">Comprimento armação (m)</label><input type="number" id="f-compr" step="0.01"></div></div>
+    </div>`;
+  }
+  fe.innerHTML=h;
+}
+
+function salvar(){
+  const tId=document.getElementById('reg-torre').value,bId=document.getElementById('reg-bloco').value,eId=document.getElementById('reg-estaca').value;
+  if(!eId){showToast('Selecione uma estaca.');return;}
+  if(!selectedTipo){showToast('Selecione o tipo de estaca.');return;}
+  const e=findEstaca(tId,bId,eId);
+  if(e){
+    const profEl=document.getElementById('f-prof');
+    const prof=profEl?parseFloat(profEl.value)||e.proj.prof:e.proj.prof;
+    e.status=prof<e.proj.prof*0.96?'alerta':'executada';
+    e.exec={prof,obs:(document.getElementById('f-obs')||{value:''}).value};
+    if(selectedTipo==='helice'){e.exec.volComp=parseFloat((document.getElementById('f-volc')||{value:0}).value)||0;e.exec.volCam=parseFloat((document.getElementById('f-volcam')||{value:0}).value)||0;e.exec.leituras=[...tpLeituras];}
+    if(selectedTipo==='raiz')e.exec.volCalda=parseFloat((document.getElementById('f-vcalda')||{value:0}).value)||0;
+    if(selectedTipo==='metalica'){const s=catState['metalica']?.selected;e.exec.perfil=s?s.bitola:'';e.exec.nega=parseFloat((document.getElementById('f-nega')||{value:0}).value)||0;}
+    if(selectedTipo==='trilho'){const s=catState['trilho']?.selected;e.exec.bitola=s?s.bitola:'';e.exec.nega=parseFloat((document.getElementById('f-nega')||{value:0}).value)||0;}
+    if(selectedTipo==='premoldada'){const s=catState['premoldada']?.selected;e.exec.secao=s?s.nome:'';e.exec.nega=parseFloat((document.getElementById('f-nega')||{value:0}).value)||0;}
+  }
+  showToast('Execução registrada!');setTimeout(()=>go('estrutura'),1200);
+}
+
+/* ═══ TORQUE/PRESSURE ═══ */
+function tpSetMode(m){
+  tpMode=m;['torque','pressao','ambos'].forEach(x=>document.getElementById('tp-btn-'+x).classList.toggle('active',x===m));
+  document.getElementById('tp-th1').textContent=m==='pressao'?'Pressão (bar)':'Torque (kN.m)';
+  document.getElementById('tp-th2').textContent=m==='ambos'?'Pressão (bar)':'';
+  document.getElementById('tp-in-v2').style.display=m==='ambos'?'':'none';tpRender();
+}
+function tpAdd(){
+  const p=parseFloat(document.getElementById('tp-in-prof').value),v1=parseFloat(document.getElementById('tp-in-v1').value),v2=parseFloat(document.getElementById('tp-in-v2').value);
+  if(isNaN(p)||isNaN(v1))return;
+  const idx=tpLeituras.findIndex(l=>l.prof===p),entry=idx>=0?tpLeituras[idx]:{prof:p};
+  if(tpMode==='torque')entry.torque=v1;else if(tpMode==='pressao')entry.pressao=v1;else{entry.torque=v1;if(!isNaN(v2))entry.pressao=v2;}
+  if(idx<0){tpLeituras.push(entry);tpLeituras.sort((a,b)=>a.prof-b.prof);}
+  document.getElementById('tp-in-prof').value='';document.getElementById('tp-in-v1').value='';document.getElementById('tp-in-v2').value='';
+  document.getElementById('tp-in-prof').focus();tpRender();
+}
+function tpRemove(i){tpLeituras.splice(i,1);tpRender();}
+function tpClear(){tpLeituras=[];tpRender();}
+function tpImport(){
+  const raw=document.getElementById('tp-bulk').value;
+  raw.split(/[|;]+/).map(s=>s.trim()).filter(Boolean).forEach(pair=>{
+    const p=pair.split(',').map(x=>parseFloat(x.trim()));
+    if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])){const idx=tpLeituras.findIndex(l=>l.prof===p[0]),e=idx>=0?tpLeituras[idx]:{prof:p[0]};if(tpMode==='pressao')e.pressao=p[1];else{e.torque=p[1];if(p[2]&&!isNaN(p[2]))e.pressao=p[2];}if(idx<0)tpLeituras.push(e);}
+  });tpLeituras.sort((a,b)=>a.prof-b.prof);document.getElementById('tp-bulk').value='';tpRender();
+}
+function tpRender(){tpRenderTable();tpRenderChart();tpCheckAlertas();}
+function tpRenderTable(){
+  const el=document.getElementById('tp-rows');
+  if(!tpLeituras.length){el.innerHTML='<div class="tp-empty">Nenhuma leitura</div>';document.getElementById('tp-stats').innerHTML='';return;}
+  el.innerHTML=tpLeituras.map((l,i)=>{const v1=tpMode==='pressao'?(l.pressao!=null?l.pressao.toFixed(1):'—'):(l.torque!=null?l.torque.toFixed(1):'—');const v2=tpMode==='ambos'?`<div class="tp-dr-val" style="color:#993556">${l.pressao!=null?l.pressao.toFixed(1):'—'}</div>`:'<div></div>';const c=l.prof>tpProjProf?'#A32D2D':l.prof>tpProjProf*0.85?'#854F0B':'#185FA5';return`<div class="tp-data-row"><div class="tp-dr-depth" style="color:${c}">${l.prof.toFixed(2)}</div><div class="tp-dr-val">${v1}</div>${v2}<button class="tp-dr-del" onclick="tpRemove(${i})">×</button></div>`;}).join('');
+  const tv=tpLeituras.filter(l=>l.torque!=null).map(l=>l.torque),pv=tpLeituras.filter(l=>l.pressao!=null).map(l=>l.pressao);let s='';
+  if(tv.length&&(tpMode==='torque'||tpMode==='ambos')){s+=`<div class="tp-stat"><div class="tp-stat-label">Torque médio</div><div class="tp-stat-val" style="color:#185FA5">${(tv.reduce((a,b)=>a+b,0)/tv.length).toFixed(0)}<span style="font-size:9px"> kN.m</span></div></div><div class="tp-stat"><div class="tp-stat-label">Torque máx</div><div class="tp-stat-val" style="color:#854F0B">${Math.max(...tv).toFixed(0)}<span style="font-size:9px"> kN.m</span></div></div>`;}
+  if(pv.length&&(tpMode==='pressao'||tpMode==='ambos')){s+=`<div class="tp-stat"><div class="tp-stat-label">Pressão média</div><div class="tp-stat-val" style="color:#993556">${(pv.reduce((a,b)=>a+b,0)/pv.length).toFixed(1)}<span style="font-size:9px"> bar</span></div></div><div class="tp-stat"><div class="tp-stat-label">Pressão máx</div><div class="tp-stat-val" style="color:#A32D2D">${Math.max(...pv).toFixed(1)}<span style="font-size:9px"> bar</span></div></div>`;}
+  document.getElementById('tp-stats').innerHTML=s;
+}
+function tpCheckAlertas(){
+  const box=document.getElementById('tp-alert'),tv=tpLeituras.filter(l=>l.torque!=null);
+  for(let i=1;i<tv.length;i++){const prev=tv.slice(0,i).reduce((a,b)=>a+b.torque,0)/i;if(tv[i].torque<prev*0.72){box.className='alert-box alert-bad show';box.innerHTML=`⚠ Queda brusca de torque em <strong>${tv[i].prof.toFixed(2)} m</strong> (${tv[i].torque.toFixed(0)} kN.m) — possível intercorrência geológica.`;return;}}
+  const maxP=tpLeituras.length?Math.max(...tpLeituras.map(l=>l.prof)):0;
+  if(maxP>0&&maxP<tpProjProf*0.95){box.className='alert-box alert-warn show';box.innerHTML=`⚠ Profundidade atual (${maxP.toFixed(2)} m) abaixo de 95% da projetada (${tpProjProf} m).`;}else box.className='alert-box';
+}
+const tpProjPlugin={id:'tpProjLine',afterDraw(ch){const yd=ch.scales.yD;if(!yd)return;const y=yd.getPixelForValue(tpProjProf);const{left,right}=ch.chartArea;const c=ch.ctx;c.save();c.setLineDash([5,4]);c.strokeStyle='rgba(163,45,45,0.5)';c.lineWidth=1.5;c.beginPath();c.moveTo(left,y);c.lineTo(right,y);c.stroke();c.setLineDash([]);c.font='10px DM Mono,monospace';const lbl='proj: '+tpProjProf.toFixed(1)+' m';const w=c.measureText(lbl).width+10;c.fillStyle='rgba(252,235,235,0.92)';c.fillRect(right-w-2,y-14,w,14);c.fillStyle='#A32D2D';c.fillText(lbl,right-w+2,y-3);c.restore();}};
+function tpRenderChart(){
+  const canvasEl=document.getElementById('tp-chart');const depths=tpLeituras.map(l=>l.prof),tv=tpLeituras.map(l=>l.torque??null),pv=tpLeituras.map(l=>l.pressao??null);const datasets=[],legItems=[];
+  if(tpMode==='torque'||tpMode==='ambos'){datasets.push({label:'Torque',data:depths.map((d,i)=>({x:tv[i],y:d})),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.1)',pointBackgroundColor:'#185FA5',pointRadius:4,tension:0.35,fill:true,yAxisID:'yD',xAxisID:'xT'});legItems.push({color:'#378ADD',label:'Torque (kN.m)'});}
+  if(tpMode==='pressao'||tpMode==='ambos'){datasets.push({label:'Pressão',data:depths.map((d,i)=>({x:pv[i],y:d})),borderColor:'#D4537E',backgroundColor:'rgba(212,83,126,0.05)',pointBackgroundColor:'#993556',pointRadius:4,tension:0.35,fill:false,yAxisID:'yD',xAxisID:'xP'});legItems.push({color:'#D4537E',label:'Pressão (bar)'});}
+  document.getElementById('tp-legend').innerHTML=legItems.map(l=>`<div class="tp-leg-item"><div class="tp-leg-dot" style="background:${l.color}"></div>${l.label}</div>`).join('');
+  if(tpChart){tpChart.destroy();tpChart=null;}if(!tpLeituras.length)return;
+  const maxD=Math.max(...depths,tpProjProf)+1.5,maxT=tv.filter(v=>v!=null).length?Math.max(...tv.filter(v=>v!=null))*1.2:200,maxPr=pv.filter(v=>v!=null).length?Math.max(...pv.filter(v=>v!=null))*1.2:10,gc='rgba(0,0,0,0.055)',lc='#999';
+  const scales={yD:{type:'linear',reverse:true,min:0,max:Math.ceil(maxD),position:'left',ticks:{color:lc,font:{size:10,family:'DM Mono'},callback:v=>v.toFixed(1)+'m'},grid:{color:gc},border:{dash:[3,3]}}};
+  if(tpMode==='torque'||tpMode==='ambos')scales.xT={type:'linear',position:'top',min:0,max:Math.ceil(maxT/10)*10,title:{display:true,text:'Torque (kN.m)',color:'#378ADD',font:{size:10}},ticks:{color:'#378ADD',font:{size:10}},grid:{color:gc}};
+  if(tpMode==='pressao'||tpMode==='ambos')scales.xP={type:'linear',position:'bottom',min:0,max:Math.ceil(maxPr),title:{display:true,text:'Pressão (bar)',color:'#D4537E',font:{size:10}},ticks:{color:'#D4537E',font:{size:10}},grid:{color:'transparent'}};
+  if(tpMode==='torque')delete scales.xP;if(tpMode==='pressao')delete scales.xT;
+  if(!Chart.registry.plugins.get('tpProjLine'))Chart.register(tpProjPlugin);
+  tpChart=new Chart(canvasEl,{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:{duration:220},interaction:{mode:'index',intersect:false},scales,plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>`Prof: ${items[0].parsed.y.toFixed(2)} m`,label:item=>`${item.dataset.label}: ${item.parsed.x!=null?item.parsed.x.toFixed(1):'—'}`},backgroundColor:'#fff',titleColor:'#333',bodyColor:'#555',borderColor:'rgba(0,0,0,0.1)',borderWidth:1,padding:9,titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:11}}}}});
+}
+
+/* ═══ COMPARATIVO ═══ */
+function initComp(){
+  const sel=document.getElementById('comp-torre');sel.innerHTML='<option value="">— torre —</option>';
+  obraAtiva.torres.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nome;sel.appendChild(o);});
+  document.getElementById('comp-estaca').innerHTML='<option value="">— estaca —</option>';document.getElementById('comp-content').innerHTML='';
+}
+function onCompTorreSel(){
+  const tId=document.getElementById('comp-torre').value,t=obraAtiva.torres.find(x=>x.id===tId);
+  const sel=document.getElementById('comp-estaca');sel.innerHTML='<option value="">— estaca executada —</option>';
+  if(t)t.blocos.forEach(b=>b.estacas.filter(e=>e.status!=='pendente').forEach(e=>{const o=document.createElement('option');o.value=`${tId}|${b.id}|${e.id}`;o.textContent=`${b.nome} › ${e.id} (${e.tipo})`;sel.appendChild(o);}));
+  document.getElementById('comp-content').innerHTML='';
+}
+function renderComp(){
+  const val=document.getElementById('comp-estaca').value,div=document.getElementById('comp-content');
+  if(!val){div.innerHTML='';return;}
+  const [tId,bId,eId]=val.split('|');const e=findEstaca(tId,bId,eId);const torre=obraAtiva.torres.find(t=>t.id===tId),bloco=torre?torre.blocos.find(b=>b.id===bId):null;
+  if(!e||!e.exec){div.innerHTML='<div style="color:#aaa;font-size:13px">Sem dados de execução.</div>';return;}
+  const profProj=e.proj.prof,profExec=e.exec.prof||0,dP=(profExec-profProj).toFixed(2),dPcls=dP<-0.3?'d-bad':dP>0.5?'d-warn':'d-ok';
+  let rows=`<div class="comp-row"><span class="comp-label">Profundidade</span><span class="comp-proj">${profProj} m</span><span class="comp-exec">${profExec} m</span><span class="comp-diff ${dPcls}">${dP>0?'+':''}${dP} m</span></div>`;
+  if(e.exec.volComp!==undefined){const vt=e.proj.volTeor||0,vc=e.exec.volComp||0,vcam=e.exec.volCam||0,sc=vt>0?((vc-vt)/vt*100).toFixed(1):0,scam=vt>0?((vcam-vt)/vt*100).toFixed(1):0;rows+=`<div class="comp-row"><span class="comp-label">Vol. teórico</span><span class="comp-proj">${vt.toFixed(3)} m³</span><span class="comp-exec">${vc.toFixed(3)} m³</span><span class="comp-diff ${Math.abs(sc)>20?'d-bad':'d-ok'}">${sc}%</span></div>`;rows+=`<div class="comp-row"><span class="comp-label">Sobreconsumo caminhão</span><span class="comp-proj">—</span><span class="comp-exec">${vcam.toFixed(3)} m³</span><span class="comp-diff ${Math.abs(scam)>25?'d-bad':'d-ok'}">${scam}%</span></div>`;}
+  if(e.exec.volCalda!==undefined){const vc=e.proj.volCalda||0,ve=e.exec.volCalda||0,dv=(ve-vc).toFixed(0);rows+=`<div class="comp-row"><span class="comp-label">Vol. calda (L)</span><span class="comp-proj">${vc}</span><span class="comp-exec">${ve}</span><span class="comp-diff ${Math.abs(dv)>30?'d-warn':'d-ok'}">${dv>0?'+':''}${dv} L</span></div>`;}
+  if(e.exec.perfil||e.exec.bitola||e.exec.secao){const label=e.exec.perfil||e.exec.bitola||e.exec.secao,projLabel=e.proj.perfil||e.proj.bitola||e.proj.secao||'—';rows+=`<div class="comp-row"><span class="comp-label">Perfil / Seção</span><span class="comp-proj" style="font-size:10px">${projLabel}</span><span class="comp-exec" style="font-size:11px">${label}</span><span class="comp-diff d-ok">✓</span></div>`;}
+  if(e.exec.nega!==undefined) rows+=`<div class="comp-row"><span class="comp-label">Nega (mm/10 golpes)</span><span class="comp-proj">—</span><span class="comp-exec">${e.exec.nega}</span><span class="comp-diff d-ok">—</span></div>`;
+  const hasL=e.exec.leituras&&e.exec.leituras.length;
+  div.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace">${eId}</span><span class="hier-tag hier-torre">${torre?torre.nome:''}</span><span class="hier-tag hier-bloco">${bloco?bloco.nome:''}</span><span style="font-size:12px;color:#888">· ${e.tipo}</span></div><span class="status-badge s-${e.status}">${e.status}</span></div><div style="display:flex;gap:16px;font-size:10px;color:#aaa;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f3f9;font-family:'DM Mono',monospace"><span style="min-width:160px">Campo</span><span style="min-width:80px">Projetado</span><span style="min-width:80px">Executado</span><span>Diferença</span></div>${rows}${e.exec.obs?`<div style="margin-top:12px;padding:10px;background:#f4f6fa;border-radius:7px;font-size:12px;color:#666"><strong>Obs:</strong> ${e.exec.obs}</div>`:''}${hasL?`<div style="margin-top:14px"><div class="card-title">Perfil de torque / pressão</div><div style="position:relative;height:220px;margin-top:8px"><canvas id="comp-chart"></canvas></div></div>`:''}</div>`;
+  if(hasL){
+    const lts=e.exec.leituras,proj=e.proj.prof,depths=lts.map(l=>l.prof),tv=lts.map(l=>l.torque??null),pv=lts.map(l=>l.pressao??null),maxD=Math.max(...depths,proj)+1.5,maxT=Math.max(...tv.filter(v=>v!=null))*1.2,maxPr=Math.max(...pv.filter(v=>v!=null))*1.2;
+    const savedP=tpProjProf;tpProjProf=proj;if(!Chart.registry.plugins.get('tpProjLine'))Chart.register(tpProjPlugin);
+    new Chart(document.getElementById('comp-chart'),{type:'line',data:{datasets:[{label:'Torque (kN.m)',data:depths.map((d,i)=>({x:tv[i],y:d})),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.1)',pointBackgroundColor:'#185FA5',pointRadius:3,tension:0.35,fill:true,yAxisID:'yD',xAxisID:'xT'},{label:'Pressão (bar)',data:depths.map((d,i)=>({x:pv[i],y:d})),borderColor:'#D4537E',backgroundColor:'rgba(212,83,126,0.05)',pointBackgroundColor:'#993556',pointRadius:3,tension:0.35,fill:false,yAxisID:'yD',xAxisID:'xP'}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},interaction:{mode:'index',intersect:false},scales:{yD:{type:'linear',reverse:true,min:0,max:Math.ceil(maxD),ticks:{color:'#999',font:{size:9,family:'DM Mono'},callback:v=>v.toFixed(1)+'m'},grid:{color:'rgba(0,0,0,0.055)'},border:{dash:[3,3]}},xT:{type:'linear',position:'top',min:0,max:Math.ceil(maxT/10)*10,title:{display:true,text:'Torque (kN.m)',color:'#378ADD',font:{size:9}},ticks:{color:'#378ADD',font:{size:9}},grid:{color:'rgba(0,0,0,0.055)'}},xP:{type:'linear',position:'bottom',min:0,max:Math.ceil(maxPr),title:{display:true,text:'Pressão (bar)',color:'#D4537E',font:{size:9}},ticks:{color:'#D4537E',font:{size:9}},grid:{color:'transparent'}}},plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>`Prof: ${i[0].parsed.y.toFixed(2)} m`,label:i=>`${i.dataset.label}: ${i.parsed.x!=null?i.parsed.x.toFixed(1):'—'}`},backgroundColor:'#fff',titleColor:'#333',bodyColor:'#555',borderColor:'rgba(0,0,0,0.1)',borderWidth:1,padding:8,titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:10}}}}});tpProjProf=savedP;
+  }
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* INIT */
+initEstacasFilters();updateTopbar();renderObraPanel();renderDashboard();renderTorres();
+</script>
+</body>
+</html>
