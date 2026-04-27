@@ -172,9 +172,58 @@ textarea{resize:vertical;min-height:60px}
 .toast{position:fixed;bottom:20px;right:20px;background:#042C53;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;font-family:'DM Mono',monospace}
 .toast.show{opacity:1}
 @media(max-width:640px){.metrics{grid-template-columns:1fr 1fr}.tp-two-col{grid-template-columns:1fr}.tp-stats{grid-template-columns:1fr 1fr}.grid-cards{grid-template-columns:1fr 1fr}.cat-specs{display:none}}
+/* SPLASH */
+.splash-overlay{position:fixed;inset:0;background:rgba(4,44,83,0.97);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.splash-box{background:#fff;border-radius:16px;padding:32px 28px;max-width:380px;width:100%;text-align:center;box-shadow:0 16px 80px rgba(0,0,0,0.4)}
+.splash-logo{font-size:22px;font-weight:700;color:#042C53;margin-bottom:4px;letter-spacing:-0.5px}
+.splash-tagline{font-size:11px;color:#85B7EB;font-family:'DM Mono',monospace;margin-bottom:24px}
+.splash-question{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:6px}
+.splash-desc{font-size:12px;color:#888;margin-bottom:22px;line-height:1.6}
+.splash-btn{width:100%;padding:12px;border-radius:9px;font-size:13px;font-weight:500;border:none;cursor:pointer;margin-bottom:10px;font-family:'DM Sans',sans-serif;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.splash-btn:last-of-type{margin-bottom:0}
+.splash-btn-primary{background:#185FA5;color:#fff}
+.splash-btn-primary:hover{background:#0C447C}
+.splash-btn-ghost{background:#f4f6fa;color:#444;border:1px solid #e4eaf5}
+.splash-btn-ghost:hover{background:#e8edf5}
+.splash-note{font-size:10px;color:#bbb;margin-top:14px;font-family:'DM Mono',monospace;line-height:1.5}
+/* RESET CONFIRM MODAL */
+.reset-overlay{position:fixed;inset:0;background:rgba(4,44,83,0.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.reset-overlay.show{display:flex}
+.reset-box{background:#fff;border-radius:12px;padding:24px;max-width:340px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
+.reset-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:8px}
+.reset-desc{font-size:12px;color:#666;margin-bottom:18px;line-height:1.6}
+.reset-actions{display:flex;gap:8px}
+.reset-actions .btn{flex:1}
 </style>
 </head>
 <body>
+<!-- SPLASH SCREEN -->
+<div id="splash-overlay" class="splash-overlay">
+  <div class="splash-box">
+    <div class="splash-logo">◆ EstacaControl</div>
+    <div class="splash-tagline">Controle de execução de fundações</div>
+    <div class="splash-question">Como deseja iniciar?</div>
+    <div class="splash-desc">Escolha abrir com dados de exemplo para explorar o app,<br>ou inicie do zero para um projeto limpo.</div>
+    <button class="splash-btn splash-btn-primary" onclick="closeSplash('exemplo')">
+      <span>📊</span> Ver dados de exemplo
+    </button>
+    <button class="splash-btn splash-btn-ghost" onclick="closeSplash('zero')">
+      <span>🗑️</span> Iniciar do zero
+    </button>
+    <div class="splash-note">Iniciar do zero limpa todos os registros de execução das obras de exemplo.<br>A estrutura (torres / blocos / estacas) é preservada.</div>
+  </div>
+</div>
+<!-- RESET CONFIRM MODAL -->
+<div id="reset-overlay" class="reset-overlay" onclick="if(event.target===this)closeResetModal()">
+  <div class="reset-box">
+    <div class="reset-title">⚠ Zerar todos os dados?</div>
+    <div class="reset-desc">Todos os registros de execução de todas as obras serão apagados. A estrutura de torres, blocos e estacas será mantida.<br><br>Esta ação não pode ser desfeita.</div>
+    <div class="reset-actions">
+      <button class="btn btn-sm" onclick="closeResetModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="doReset()" style="background:#A32D2D;border-color:#A32D2D">Confirmar reset</button>
+    </div>
+  </div>
+</div>
 <div class="app">
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px;min-width:0">
@@ -185,7 +234,10 @@ textarea{resize:vertical;min-height:60px}
       <span style="font-size:10px;color:#85B7EB">▾</span>
     </div>
   </div>
-  <div style="font-size:11px;background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:4px;color:#85B7EB;font-family:'DM Mono',monospace">Eng. V. Tadeu</div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="font-size:11px;background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:4px;color:#85B7EB;font-family:'DM Mono',monospace">Eng. J. Mendes</div>
+    <button onclick="openResetModal()" title="Zerar dados de execução" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:4px;padding:3px 9px;color:#85B7EB;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;transition:all 0.12s" onmouseover="this.style.background='rgba(163,45,45,0.4)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.08)';this.style.color='#85B7EB'">⟳ Zerar</button>
+  </div>
 </div>
 <!-- OBRA PANEL OVERLAY -->
 <div id="obra-overlay" style="display:none;position:fixed;inset:0;background:rgba(4,44,83,0.45);z-index:200;align-items:flex-start;justify-content:center;padding-top:56px" onclick="if(event.target===this)closeObraPanel()">
@@ -343,7 +395,7 @@ const TRILHOS=[{"bitola":"TR 25  ASCE 5040","area":31.5,"perim":42.33},{"bitola"
 const TIPOS=[{id:'helice',nome:'Hélice Contínua',icon:'🌀'},{id:'raiz',nome:'Raiz',icon:'🌿'},{id:'metalica',nome:'Metálica',icon:'⚙️'},{id:'trilho',nome:'Trilho',icon:'🛤️'},{id:'premoldada',nome:'Pré-Moldada',icon:'🧱'},{id:'trado',nome:'Trado Mecanizado',icon:'🔧'}];
 /* ═══ OBRAS — camada superior da hierarquia ═══ */
 const OBRAS=[
-  {id:'OB1',nome:'Ed. Residencial Aurora',cidade:'Belo Horizonte — MG',engResp:'Eng. V. Tadeu',status:'andamento',inicio:'2025-01-10',prevTermino:'28/06/2025',
+  {id:'OB1',nome:'Ed. Residencial Aurora',cidade:'Belo Horizonte — MG',engResp:'Eng. J. Mendes',status:'andamento',inicio:'2025-01-10',prevTermino:'28/06/2025',
     torres:[
   {id:'T1',nome:'Torre 1',blocos:[
     {id:'B01',nome:'Bloco 01',estacas:[
@@ -926,6 +978,28 @@ function renderComp(){
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* ═══ SPLASH & RESET ═══ */
+function closeSplash(mode){
+  document.getElementById('splash-overlay').style.display='none';
+  if(mode==='zero'){
+    deepResetObras(false);
+    showToast('Iniciado do zero — registros limpos.');
+  }
+}
+function openResetModal(){document.getElementById('reset-overlay').classList.add('show');}
+function closeResetModal(){document.getElementById('reset-overlay').classList.remove('show');}
+function doReset(){
+  closeResetModal();
+  deepResetObras(true);
+}
+function deepResetObras(showMsg){
+  OBRAS.forEach(o=>o.torres.forEach(t=>t.blocos.forEach(b=>b.estacas.forEach(e=>{e.exec=null;e.status='pendente';}))));
+  initEstacasFilters();updateTopbar();renderObraPanel();renderDashboard();renderTorres();
+  const sid=document.querySelector('.section.active')?.id.replace('sec-','')||'dashboard';
+  go(sid);
+  if(showMsg)showToast('Dados zerados com sucesso.');
+}
 
 /* INIT */
 initEstacasFilters();updateTopbar();renderObraPanel();renderDashboard();renderTorres();
